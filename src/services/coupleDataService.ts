@@ -136,6 +136,8 @@ export async function updateCoupleConfiguration(
     funnyLabelOne: (updates.funnyLabelOne ?? currentConfig.funnyLabelOne).trim().slice(0, 40),
     funnyLabelTwo: (updates.funnyLabelTwo ?? currentConfig.funnyLabelTwo).trim().slice(0, 40),
     relationshipStartDate: (updates.relationshipStartDate ?? currentConfig.relationshipStartDate).trim().slice(0, 40),
+    partnerOneBirthday: (updates.partnerOneBirthday ?? currentConfig.partnerOneBirthday ?? '').trim().slice(0, 40),
+    partnerTwoBirthday: (updates.partnerTwoBirthday ?? currentConfig.partnerTwoBirthday ?? '').trim().slice(0, 40),
     timezone: (updates.timezone ?? currentConfig.timezone).trim().slice(0, 80),
     featuredMemoryId: (updates.featuredMemoryId ?? currentConfig.featuredMemoryId ?? '').trim().slice(0, 128),
     maxFileSizeMB: Math.min(500, Math.max(1, Number(updates.maxFileSizeMB ?? currentConfig.maxFileSizeMB))),

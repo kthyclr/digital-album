@@ -165,3 +165,169 @@ export function isSameMonthAndDayFromEarlierYear(
     d === today.getDate()
   );
 }
+
+export interface BirthdayInfo {
+  partnerKey: 'partnerOne' | 'partnerTwo';
+  partnerName: string;
+  affectionateName: string;
+  funnyName: string;
+  birthdayIso: string;
+  month: number;
+  day: number;
+  birthYear?: number;
+  hasYear: boolean;
+  formattedBirthday: string;
+  daysUntil: number;
+  isToday: boolean;
+  isTomorrow: boolean;
+  isWithinAWeek: boolean;
+  turningAge?: number;
+  currentAge?: number;
+  nextBirthdayDate: Date;
+  nextBirthdayFormatted: string;
+}
+
+export function parseBirthdayComponents(birthdayIso: string): {
+  year?: number;
+  month: number;
+  day: number;
+} | null {
+  if (!birthdayIso || typeof birthdayIso !== 'string') return null;
+  const clean = birthdayIso.trim();
+  const parts = clean.split('-').map((p) => parseInt(p, 10));
+
+  if (parts.length === 3 && !parts.some(isNaN)) {
+    // YYYY-MM-DD
+    const [y, m, d] = parts;
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return { year: y, month: m, day: d };
+    }
+  } else if (parts.length === 2 && !parts.some(isNaN)) {
+    // MM-DD
+    const [m, d] = parts;
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return { month: m, day: d };
+    }
+  }
+  return null;
+}
+
+export function calculateBirthdayInfo(
+  birthdayIso: string | undefined,
+  partnerKey: 'partnerOne' | 'partnerTwo',
+  partnerName: string,
+  affectionateName: string,
+  funnyName: string,
+  now: Date = new Date()
+): BirthdayInfo | null {
+  if (!birthdayIso) return null;
+  const parsed = parseBirthdayComponents(birthdayIso);
+  if (!parsed) return null;
+
+  const { year, month, day } = parsed;
+  const hasYear = typeof year === 'number' && year > 1900 && year <= now.getFullYear() + 1;
+
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const thisYearBirthday = new Date(now.getFullYear(), month - 1, day, 0, 0, 0, 0);
+
+  let nextBirthdayDate: Date;
+  let isToday = false;
+  let daysUntil = 0;
+
+  if (thisYearBirthday.getTime() === todayMidnight.getTime()) {
+    isToday = true;
+    daysUntil = 0;
+    nextBirthdayDate = thisYearBirthday;
+  } else if (thisYearBirthday.getTime() > todayMidnight.getTime()) {
+    nextBirthdayDate = thisYearBirthday;
+    daysUntil = Math.round((nextBirthdayDate.getTime() - todayMidnight.getTime()) / 86400000);
+  } else {
+    nextBirthdayDate = new Date(now.getFullYear() + 1, month - 1, day, 0, 0, 0, 0);
+    daysUntil = Math.round((nextBirthdayDate.getTime() - todayMidnight.getTime()) / 86400000);
+  }
+
+  const isTomorrow = daysUntil === 1;
+  const isWithinAWeek = daysUntil > 0 && daysUntil <= 7;
+
+  let turningAge: number | undefined;
+  let currentAge: number | undefined;
+
+  if (hasYear && year) {
+    turningAge = nextBirthdayDate.getFullYear() - year;
+    currentAge = isToday
+      ? turningAge
+      : (thisYearBirthday.getTime() > todayMidnight.getTime() ? turningAge - 1 : turningAge);
+  }
+
+  const monthName = nextBirthdayDate.toLocaleDateString('en-US', { month: 'long' });
+  const formattedBirthday = hasYear && year
+    ? `${monthName} ${day}, ${year}`
+    : `${monthName} ${day}`;
+
+  const nextBirthdayFormatted = nextBirthdayDate.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  return {
+    partnerKey,
+    partnerName,
+    affectionateName,
+    funnyName,
+    birthdayIso,
+    month,
+    day,
+    birthYear: hasYear ? year : undefined,
+    hasYear,
+    formattedBirthday,
+    daysUntil,
+    isToday,
+    isTomorrow,
+    isWithinAWeek,
+    turningAge,
+    currentAge,
+    nextBirthdayDate,
+    nextBirthdayFormatted,
+  };
+}
+
+export function getUpcomingBirthdays(
+  coupleConfig: {
+    partnerOneName: string;
+    partnerTwoName: string;
+    affectionateLabelOne: string;
+    affectionateLabelTwo: string;
+    funnyLabelOne: string;
+    funnyLabelTwo: string;
+    partnerOneBirthday?: string;
+    partnerTwoBirthday?: string;
+  },
+  now: Date = new Date()
+): BirthdayInfo[] {
+  const list: BirthdayInfo[] = [];
+
+  const b1 = calculateBirthdayInfo(
+    coupleConfig.partnerOneBirthday,
+    'partnerOne',
+    coupleConfig.partnerOneName,
+    coupleConfig.affectionateLabelOne,
+    coupleConfig.funnyLabelOne,
+    now
+  );
+  if (b1) list.push(b1);
+
+  const b2 = calculateBirthdayInfo(
+    coupleConfig.partnerTwoBirthday,
+    'partnerTwo',
+    coupleConfig.partnerTwoName,
+    coupleConfig.affectionateLabelTwo,
+    coupleConfig.funnyLabelTwo,
+    now
+  );
+  if (b2) list.push(b2);
+
+  // Sort by whoever's birthday is coming soonest
+  return list.sort((a, b) => a.daysUntil - b.daysUntil);
+}
+

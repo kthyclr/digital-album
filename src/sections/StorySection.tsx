@@ -9,6 +9,7 @@ import {
   ChevronRight,
   X,
   Sparkles,
+  Cake,
 } from 'lucide-react';
 import { useCouple } from '../context/CoupleContext';
 import { MemoryItem, StoryMilestone } from '../types/models';
@@ -18,7 +19,11 @@ import {
   MemoryCard,
   ConfirmDialog,
 } from '../components/SharedUI';
-import { formatReadableDate, getTodayIsoString } from '../utils/dateUtils';
+import {
+  formatReadableDate,
+  getTodayIsoString,
+  parseBirthdayComponents,
+} from '../utils/dateUtils';
 import {
   createStoryMilestone,
   updateStoryMilestone,
@@ -95,15 +100,19 @@ export const StorySection: React.FC<{
     const firstDayOfWeek = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
+    const p1Bday = parseBirthdayComponents(coupleConfig.partnerOneBirthday || '');
+    const p2Bday = parseBirthdayComponents(coupleConfig.partnerTwoBirthday || '');
+
     const cells: {
       dayNum: number | null;
       isoDate: string;
       memories: MemoryItem[];
       milestones: StoryMilestone[];
+      birthdayLabels: string[];
     }[] = [];
 
     for (let i = 0; i < firstDayOfWeek; i++) {
-      cells.push({ dayNum: null, isoDate: '', memories: [], milestones: [] });
+      cells.push({ dayNum: null, isoDate: '', memories: [], milestones: [], birthdayLabels: [] });
     }
 
     for (let d = 1; d <= daysInMonth; d++) {
@@ -112,24 +121,50 @@ export const StorySection: React.FC<{
       ).padStart(2, '0')}`;
       const dayMemories = activeMemories.filter((m) => m.memoryDate === iso);
       const dayMilestones = milestones.filter((ms) => ms.eventDate === iso);
+
+      const birthdayLabels: string[] = [];
+      if (p1Bday && p1Bday.month === month + 1 && p1Bday.day === d) {
+        birthdayLabels.push(`${coupleConfig.partnerOneName}'s Birthday`);
+      }
+      if (p2Bday && p2Bday.month === month + 1 && p2Bday.day === d) {
+        birthdayLabels.push(`${coupleConfig.partnerTwoName}'s Birthday`);
+      }
+
       cells.push({
         dayNum: d,
         isoDate: iso,
         memories: dayMemories,
         milestones: dayMilestones,
+        birthdayLabels,
       });
     }
 
     return cells;
-  }, [calendarMonth, activeMemories, milestones]);
+  }, [calendarMonth, activeMemories, milestones, coupleConfig]);
 
   const selectedDayEntries = useMemo(() => {
-    if (!selectedDayIso) return { memories: [], milestones: [] };
+    if (!selectedDayIso) return { memories: [], milestones: [], birthdayLabels: [] };
+    const p1Bday = parseBirthdayComponents(coupleConfig.partnerOneBirthday || '');
+    const p2Bday = parseBirthdayComponents(coupleConfig.partnerTwoBirthday || '');
+
+    const parts = selectedDayIso.split('-').map((n) => parseInt(n, 10));
+    const birthdayLabels: string[] = [];
+    if (parts.length === 3) {
+      const [, m, d] = parts;
+      if (p1Bday && p1Bday.month === m && p1Bday.day === d) {
+        birthdayLabels.push(`${coupleConfig.partnerOneName}'s Birthday`);
+      }
+      if (p2Bday && p2Bday.month === m && p2Bday.day === d) {
+        birthdayLabels.push(`${coupleConfig.partnerTwoName}'s Birthday`);
+      }
+    }
+
     return {
       memories: activeMemories.filter((m) => m.memoryDate === selectedDayIso),
       milestones: milestones.filter((ms) => ms.eventDate === selectedDayIso),
+      birthdayLabels,
     };
-  }, [selectedDayIso, activeMemories, milestones]);
+  }, [selectedDayIso, activeMemories, milestones, coupleConfig]);
 
   const handleOpenMilestoneModal = (ms?: StoryMilestone) => {
     if (ms) {
@@ -305,7 +340,11 @@ export const StorySection: React.FC<{
                       <div className="flex items-start justify-between gap-4">
                         <div className="space-y-1">
                           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent-pink)]">
-                            <Sparkles className="w-3.5 h-3.5" />
+                            {ms.category === 'Birthday' ? (
+                              <Cake className="w-3.5 h-3.5 text-[var(--accent)]" />
+                            ) : (
+                              <Sparkles className="w-3.5 h-3.5" />
+                            )}
                             <span>{ms.category || 'Milestone'}</span>
                           </span>
                           <h3 className="text-xl font-serif-editorial font-semibold text-[var(--text-primary)]">
@@ -457,6 +496,7 @@ export const StorySection: React.FC<{
                 const hasItems =
                   cell.memories.length > 0 || cell.milestones.length > 0;
                 const isSelected = selectedDayIso === cell.isoDate;
+                const hasBirthday = cell.birthdayLabels.length > 0;
 
                 return (
                   <button
@@ -465,28 +505,45 @@ export const StorySection: React.FC<{
                     onClick={() =>
                       setSelectedDayIso(isSelected ? '' : cell.isoDate)
                     }
-                    className={`h-20 p-2 rounded-xl border text-left flex flex-col justify-between transition-colors cursor-pointer ${
+                    className={`h-22 p-2 rounded-xl border text-left flex flex-col justify-between transition-colors cursor-pointer relative ${
                       isSelected
                         ? 'border-[var(--accent-blue)] bg-[var(--bg-powder-blue)]'
-                        : hasItems
-                          ? 'border-[var(--border-strong)] bg-[var(--bg-powder-pink)]/40 hover:bg-[var(--bg-powder-pink)]/70'
-                          : 'border-[var(--border-hairline)] bg-[var(--bg-surface)] hover:bg-[var(--bg-subtle)]'
+                        : hasBirthday
+                          ? 'border-[var(--accent)] bg-[var(--paper-pink)]/70 hover:bg-[var(--paper-pink)]'
+                          : hasItems
+                            ? 'border-[var(--border-strong)] bg-[var(--bg-powder-pink)]/40 hover:bg-[var(--bg-powder-pink)]/70'
+                            : 'border-[var(--border-hairline)] bg-[var(--bg-surface)] hover:bg-[var(--bg-subtle)]'
                     }`}
                   >
-                    <span className="text-xs font-mono-tabular font-semibold">
-                      {cell.dayNum}
-                    </span>
-                    {hasItems && (
-                      <div className="text-[10px] text-[var(--accent-blue)] font-medium truncate">
-                        {cell.memories.length > 0 &&
-                          `${cell.memories.length} mem`}
-                        {cell.memories.length > 0 &&
-                          cell.milestones.length > 0 &&
-                          ' · '}
-                        {cell.milestones.length > 0 &&
-                          `${cell.milestones.length} ms`}
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-xs font-mono-tabular font-semibold">
+                        {cell.dayNum}
+                      </span>
+                      {hasBirthday && (
+                        <span className="text-xs" role="img" aria-label="birthday">
+                          🎂
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-0.5 w-full overflow-hidden">
+                      {hasBirthday && (
+                        <div className="text-[9px] font-space-mono text-[var(--accent)] font-bold truncate">
+                          {cell.birthdayLabels.join(' & ')}
+                        </div>
+                      )}
+                      {hasItems && (
+                        <div className="text-[10px] text-[var(--accent-blue)] font-medium truncate">
+                          {cell.memories.length > 0 &&
+                            `${cell.memories.length} mem`}
+                          {cell.memories.length > 0 &&
+                            cell.milestones.length > 0 &&
+                            ' · '}
+                          {cell.milestones.length > 0 &&
+                            `${cell.milestones.length} ms`}
+                        </div>
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -507,6 +564,39 @@ export const StorySection: React.FC<{
                   Close Day View
                 </button>
               </div>
+
+              {selectedDayEntries.birthdayLabels.length > 0 && (
+                <div className="p-4 rounded-xl bg-[var(--paper-pink)] border-2 border-[var(--ink)] flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl" role="img" aria-label="birthday cake">
+                      🎂
+                    </span>
+                    <div>
+                      <p className="font-bold text-sm text-[var(--ink)]">
+                        {selectedDayEntries.birthdayLabels.join(' & ')}
+                      </p>
+                      <p className="text-xs text-[var(--text-secondary)]">
+                        A special celebration day in your journey together!
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMTitle(selectedDayEntries.birthdayLabels[0]);
+                      setMDate(selectedDayIso);
+                      setMCategory('Birthday');
+                      setEditingMilestone(null);
+                      setMDesc('');
+                      setMLinkedIds([]);
+                      setMilestoneModalOpen(true);
+                    }}
+                    className="scrapbook-btn-primary px-3 py-1.5 text-[11px] cursor-pointer whitespace-nowrap"
+                  >
+                    + Add Birthday Note
+                  </button>
+                </div>
+              )}
 
               {selectedDayEntries.milestones.length === 0 &&
               selectedDayEntries.memories.length === 0 ? (
@@ -618,9 +708,25 @@ export const StorySection: React.FC<{
                   maxLength={60}
                   value={mCategory}
                   onChange={(e) => setMCategory(e.target.value)}
-                  placeholder="Milestone, Anniversary, Firsts..."
+                  placeholder="Birthday, Milestone, Anniversary, Firsts..."
                   className="w-full px-3 py-2 rounded-lg text-xs bg-[var(--bg-subtle)] border border-[var(--border-hairline)]"
                 />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {['Birthday', 'Anniversary', 'Milestone', 'Firsts', 'Travel', 'Celebration'].map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setMCategory(cat)}
+                      className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
+                        mCategory === cat
+                          ? 'border-[var(--ink)] bg-[var(--accent)] text-white font-bold'
+                          : 'border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]'
+                      }`}
+                    >
+                      {cat === 'Birthday' ? '🎂 Birthday' : cat}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

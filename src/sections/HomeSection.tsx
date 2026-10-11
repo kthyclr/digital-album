@@ -8,12 +8,15 @@ import {
   Sparkles,
   Play,
   Shuffle,
+  Cake,
+  Gift,
 } from 'lucide-react';
 import { useCouple } from '../context/CoupleContext';
 import {
   calculateRelationshipDuration,
   formatReadableDate,
   isSameMonthAndDayFromEarlierYear,
+  getUpcomingBirthdays,
 } from '../utils/dateUtils';
 import { MemoryItem, PrimarySection } from '../types/models';
 import { MemoryCard, EmptyStatePanel } from '../components/SharedUI';
@@ -123,8 +126,70 @@ export const HomeSection: React.FC<{
     );
   }).length;
 
+  const upcomingBirthdays = getUpcomingBirthdays(coupleConfig, now);
+  const todayBirthdays = upcomingBirthdays.filter((b) => b.isToday);
+
   return (
     <div className="space-y-12">
+      {/* Birthday Celebration Banner when today is either partner's birthday */}
+      {todayBirthdays.length > 0 && (
+        <section className="space-y-4">
+          {todayBirthdays.map((b) => (
+            <div
+              key={b.partnerKey}
+              className="p-6 md:p-8 rounded-[36px] bg-[var(--paper-pink)] border-3 border-[var(--ink)] shadow-[10px_10px_0_var(--ink-faint)] relative overflow-hidden space-y-4"
+            >
+              <span
+                aria-hidden="true"
+                className="absolute top-4 right-6 text-4xl select-none"
+              >
+                🎉
+              </span>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-start sm:items-center gap-4">
+                  <div className="w-16 h-16 rounded-2xl bg-[var(--bg-surface)] border-3 border-[var(--ink)] flex items-center justify-center text-3xl shrink-0 shadow-sm">
+                    🎂
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="scrapbook-pill">
+                      <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
+                      <span>Today is {b.partnerName}'s Birthday!</span>
+                    </div>
+                    <h2 className="text-3xl sm:text-4xl font-gaegu font-bold leading-none text-[var(--ink)]">
+                      Happy Birthday, {b.partnerName}! ({b.affectionateName} · {b.funnyName}) 🥳
+                    </h2>
+                    <p className="text-xs sm:text-sm text-[var(--text-secondary)] font-medium max-w-2xl leading-relaxed">
+                      {b.turningAge
+                        ? `Celebrating ${b.turningAge} incredible years of you! May today bring all the sweetness, laughter, and warm memories in our little universe.`
+                        : 'Wishing you the sweetest, warmest year full of love, laughter, and unforgettable moments together!'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('time-capsule')}
+                    className="scrapbook-btn-primary inline-flex items-center gap-2 px-5 py-3 text-xs cursor-pointer whitespace-nowrap"
+                  >
+                    <Gift className="w-3.5 h-3.5" />
+                    <span>Write Birthday Letter</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onOpenUpload}
+                    className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-semibold border-2 border-[var(--ink)] bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-[var(--paper-blue)] transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Birthday Memory</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
       {/* Variation 14 Split-Screen Scrapbook Hero */}
       <section className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8 items-stretch">
         {/* Left Main Scrapbook Card */}
@@ -229,6 +294,69 @@ export const HomeSection: React.FC<{
                   : `In ${duration.daysUntilNextMilestone}d`}
               </span>
             </div>
+
+            {/* Upcoming Birthdays Tracker */}
+            {upcomingBirthdays.length > 0 && (
+              <div className="pt-3 border-t border-dashed border-[var(--ink-faint)] space-y-2.5">
+                <div className="flex items-center justify-between text-xs font-space-mono">
+                  <span className="font-bold text-[var(--ink)] inline-flex items-center gap-1.5">
+                    <Cake className="w-3.5 h-3.5 text-[var(--accent)]" />
+                    <span>Birthday Countdowns</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('settings')}
+                    className="text-[10px] text-[var(--text-muted)] hover:text-[var(--accent)] underline cursor-pointer"
+                  >
+                    Settings
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {upcomingBirthdays.map((b) => (
+                    <div
+                      key={b.partnerKey}
+                      className={`p-3 rounded-2xl border-2 border-[var(--ink)] flex items-center justify-between gap-2.5 transition-colors ${
+                        b.isToday
+                          ? 'bg-[var(--paper-pink)] shadow-sm'
+                          : 'bg-[var(--bg-surface)]'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm shrink-0" role="img" aria-label="birthday cake">
+                            🎂
+                          </span>
+                          <p className="font-bold text-xs text-[var(--ink)] truncate">
+                            {b.partnerName} ({b.affectionateName})
+                          </p>
+                        </div>
+                        <p className="text-[10px] font-space-mono text-[var(--text-secondary)] pl-5">
+                          {b.formattedBirthday}
+                          {b.turningAge ? ` · Turning ${b.turningAge}` : ''}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`font-space-mono text-[11px] px-2.5 py-1 rounded-full border border-[var(--ink)] shrink-0 font-bold ${
+                          b.isToday
+                            ? 'bg-[var(--accent)] text-white'
+                            : b.isTomorrow
+                            ? 'bg-[var(--paper-pink)] text-[var(--accent)]'
+                            : 'bg-[var(--paper-blue)] text-[var(--ink)]'
+                        }`}
+                      >
+                        {b.isToday
+                          ? 'Today! 🥳'
+                          : b.isTomorrow
+                          ? 'Tomorrow!'
+                          : `In ${b.daysUntil}d`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Quick Actions */}

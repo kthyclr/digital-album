@@ -9,6 +9,7 @@ import {
   X,
   CheckCircle2,
   Clock,
+  Cake,
 } from 'lucide-react';
 import { useCouple } from '../context/CoupleContext';
 import { TimeCapsuleLetter, LetterRecipient } from '../types/models';
@@ -24,9 +25,10 @@ import {
   updateLockedLetter,
   deleteLockedLetter,
 } from '../services/coupleDataService';
+import { getUpcomingBirthdays } from '../utils/dateUtils';
 
 export const TimeCapsuleSection: React.FC = () => {
-  const { user, letters, addToast } = useCouple();
+  const { user, coupleConfig, letters, addToast } = useCouple();
 
   const [composeOpen, setComposeOpen] = useState(false);
   const [editingLetter, setEditingLetter] =
@@ -385,6 +387,57 @@ export const TimeCapsuleSection: React.FC = () => {
                   onChange={(e) => setUnlockDateIso(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg text-xs bg-[var(--bg-subtle)] border border-[var(--border-hairline)] font-mono-tabular"
                 />
+                {(() => {
+                  const upcoming = getUpcomingBirthdays(coupleConfig);
+                  const nextBday = upcoming[0];
+                  return (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <span className="text-[10px] text-[var(--text-muted)]">Quick presets:</span>
+                      {nextBday && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const d = new Date(nextBday.nextBirthdayDate);
+                            d.setHours(9, 0, 0, 0);
+                            const y = d.getFullYear();
+                            const m = String(d.getMonth() + 1).padStart(2, '0');
+                            const day = String(d.getDate()).padStart(2, '0');
+                            setUnlockDateIso(`${y}-${m}-${day}T09:00`);
+                            if (!occasionNote) {
+                              setOccasionNote(`To open on ${nextBday.partnerName}'s Birthday 🎂`);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-hairline)] bg-[var(--paper-pink)] text-[var(--ink)] hover:border-[var(--accent)] cursor-pointer"
+                        >
+                          <Cake className="w-2.5 h-2.5 text-[var(--accent)]" />
+                          <span>{nextBday.partnerName}'s Birthday ({nextBday.formattedBirthday})</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const future = new Date(Date.now() + 180 * 86400000);
+                          future.setHours(9, 0, 0, 0);
+                          setUnlockDateIso(future.toISOString().slice(0, 16));
+                        }}
+                        className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] cursor-pointer"
+                      >
+                        6 Months
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const future = new Date(Date.now() + 365 * 86400000);
+                          future.setHours(9, 0, 0, 0);
+                          setUnlockDateIso(future.toISOString().slice(0, 16));
+                        }}
+                        className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] cursor-pointer"
+                      >
+                        1 Year
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 

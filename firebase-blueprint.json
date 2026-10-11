@@ -50,6 +50,16 @@
           "maxLength": 40,
           "description": "ISO date string for relationship start (default 2026-09-15)"
         },
+        "partnerOneBirthday": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "First partner birthday ISO date string YYYY-MM-DD or MM-DD (Kathy)"
+        },
+        "partnerTwoBirthday": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Second partner birthday ISO date string YYYY-MM-DD or MM-DD (Austin)"
+        },
         "timezone": {
           "type": "string",
           "maxLength": 80,

@@ -41,6 +41,8 @@ export interface CoupleConfig {
   funnyLabelOne: string;
   funnyLabelTwo: string;
   relationshipStartDate: string; // YYYY-MM-DD
+  partnerOneBirthday?: string; // YYYY-MM-DD (Kathy's birthday)
+  partnerTwoBirthday?: string; // YYYY-MM-DD (Austin's birthday)
   timezone: string;
   featuredMemoryId: string;
   maxFileSizeMB: number;
@@ -60,6 +62,8 @@ export const DEFAULT_COUPLE_CONFIG: Omit<CoupleConfig, 'createdAt' | 'updatedAt'
   funnyLabelOne: 'Ling',
   funnyLabelTwo: 'Kong',
   relationshipStartDate: '2026-09-15',
+  partnerOneBirthday: '2001-08-14',
+  partnerTwoBirthday: '2000-03-21',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
   featuredMemoryId: '',
   maxFileSizeMB: 50,
@@ -98,6 +102,7 @@ export const ALL_SUPPORTED_MIME_TYPES = [
 ];
 
 export const DEFAULT_SUGGESTED_TAGS = [
+  'birthday',
   'date night',
   'travel',
   'food',

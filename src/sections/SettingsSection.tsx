@@ -7,6 +7,7 @@ import {
   Monitor,
   LogOut,
   Save,
+  Cake,
 } from 'lucide-react';
 import { useCouple } from '../context/CoupleContext';
 import { SectionHeader } from '../components/SharedUI';
@@ -15,6 +16,7 @@ import {
   updateUserPreferences,
 } from '../services/coupleDataService';
 import { AUTHORIZED_EMAILS } from '../config/coupleConfig';
+import { calculateBirthdayInfo } from '../utils/dateUtils';
 
 export const SettingsSection: React.FC = () => {
   const {
@@ -50,6 +52,12 @@ export const SettingsSection: React.FC = () => {
   const [startDate, setStartDate] = useState(
     coupleConfig.relationshipStartDate
   );
+  const [partnerOneBirthday, setPartnerOneBirthday] = useState(
+    coupleConfig.partnerOneBirthday || ''
+  );
+  const [partnerTwoBirthday, setPartnerTwoBirthday] = useState(
+    coupleConfig.partnerTwoBirthday || ''
+  );
   const [timezone, setTimezone] = useState(coupleConfig.timezone);
   const [maxFileSizeMB, setMaxFileSizeMB] = useState(
     coupleConfig.maxFileSizeMB
@@ -69,12 +77,30 @@ export const SettingsSection: React.FC = () => {
     setFunnyOne(coupleConfig.funnyLabelOne);
     setFunnyTwo(coupleConfig.funnyLabelTwo);
     setStartDate(coupleConfig.relationshipStartDate);
+    setPartnerOneBirthday(coupleConfig.partnerOneBirthday || '');
+    setPartnerTwoBirthday(coupleConfig.partnerTwoBirthday || '');
     setTimezone(coupleConfig.timezone);
     setMaxFileSizeMB(coupleConfig.maxFileSizeMB);
     setTrashRetentionDays(coupleConfig.trashRetentionDays);
   }, [coupleConfig]);
 
   if (!user) return null;
+
+  const p1BirthdayInfo = calculateBirthdayInfo(
+    partnerOneBirthday,
+    'partnerOne',
+    partnerOneName,
+    affectionateOne,
+    funnyOne
+  );
+
+  const p2BirthdayInfo = calculateBirthdayInfo(
+    partnerTwoBirthday,
+    'partnerTwo',
+    partnerTwoName,
+    affectionateTwo,
+    funnyTwo
+  );
 
   const handleSaveCoupleConfig = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,11 +116,13 @@ export const SettingsSection: React.FC = () => {
         funnyLabelOne: funnyOne,
         funnyLabelTwo: funnyTwo,
         relationshipStartDate: startDate,
+        partnerOneBirthday,
+        partnerTwoBirthday,
         timezone,
         maxFileSizeMB,
         trashRetentionDays,
       });
-      addToast('Saved shared couple configuration', 'success');
+      addToast('Saved shared couple configuration & birthdays', 'success');
     } catch (err) {
       addToast(
         'Failed to update settings',
@@ -413,6 +441,83 @@ export const SettingsSection: React.FC = () => {
                 onChange={(e) => setTimezone(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-xs bg-[var(--bg-subtle)] border border-[var(--border-hairline)] font-mono-tabular"
               />
+            </div>
+
+            {/* Dedicated Birthdays & Celebrations Block */}
+            <div className="sm:col-span-2 pt-4 border-t border-dashed border-[var(--ink-faint)] space-y-3">
+              <div className="flex items-center gap-2">
+                <Cake className="w-4 h-4 text-[var(--accent)]" />
+                <h3 className="text-sm font-semibold text-[var(--ink)]">
+                  Birthdays &amp; Celebrations
+                </h3>
+              </div>
+              <p className="text-xs text-[var(--text-secondary)]">
+                Keep track of countdowns, turning ages, and celebration reminders across Home and Our Story.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div className="p-4 rounded-2xl bg-[var(--paper-pink)] border-2 border-[var(--ink)] space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="block text-xs font-bold text-[var(--ink)]">
+                      {partnerOneName} ({affectionateOne || 'Moly'})'s Birthday
+                    </label>
+                    <span className="text-[10px] font-space-mono text-[var(--accent)] font-bold uppercase">
+                      Partner 1
+                    </span>
+                  </div>
+                  <input
+                    type="date"
+                    value={partnerOneBirthday}
+                    onChange={(e) => setPartnerOneBirthday(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-xs bg-[var(--bg-surface)] border-2 border-[var(--ink)] font-mono-tabular"
+                  />
+                  {p1BirthdayInfo ? (
+                    <div className="text-[11px] font-space-mono text-[var(--ink)] pt-1 flex items-center justify-between">
+                      <span className="font-semibold">
+                        {p1BirthdayInfo.isToday ? '🎉 Today is their birthday!' : `In ${p1BirthdayInfo.daysUntil} days`}
+                      </span>
+                      <span className="text-[var(--accent)] font-bold">
+                        {p1BirthdayInfo.turningAge ? `Turning ${p1BirthdayInfo.turningAge}` : p1BirthdayInfo.nextBirthdayFormatted}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] font-space-mono text-[var(--text-muted)]">
+                      Select date to enable birthday countdown
+                    </p>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[var(--paper-blue)] border-2 border-[var(--ink)] space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="block text-xs font-bold text-[var(--ink)]">
+                      {partnerTwoName} ({affectionateTwo || 'Love'})'s Birthday
+                    </label>
+                    <span className="text-[10px] font-space-mono text-[var(--ink)] font-bold uppercase">
+                      Partner 2
+                    </span>
+                  </div>
+                  <input
+                    type="date"
+                    value={partnerTwoBirthday}
+                    onChange={(e) => setPartnerTwoBirthday(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-xs bg-[var(--bg-surface)] border-2 border-[var(--ink)] font-mono-tabular"
+                  />
+                  {p2BirthdayInfo ? (
+                    <div className="text-[11px] font-space-mono text-[var(--ink)] pt-1 flex items-center justify-between">
+                      <span className="font-semibold">
+                        {p2BirthdayInfo.isToday ? '🎉 Today is their birthday!' : `In ${p2BirthdayInfo.daysUntil} days`}
+                      </span>
+                      <span className="text-[var(--accent)] font-bold">
+                        {p2BirthdayInfo.turningAge ? `Turning ${p2BirthdayInfo.turningAge}` : p2BirthdayInfo.nextBirthdayFormatted}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] font-space-mono text-[var(--text-muted)]">
+                      Select date to enable birthday countdown
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div>
