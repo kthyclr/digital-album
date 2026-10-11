@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Camera,
   Film,
@@ -275,6 +275,11 @@ export const MemoryCard: React.FC<{
   );
   const isTrashed = memory.status === 'trashed';
   const displayUrl = memory.thumbnailUrl || memory.mediaUrl;
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [displayUrl]);
 
   const mediaIcon =
     memory.mediaType === 'photo' ? (
@@ -303,14 +308,19 @@ export const MemoryCard: React.FC<{
           className="flex items-center gap-3.5 flex-1 min-w-0 text-left cursor-pointer"
         >
           <div className="p-1.5 rounded-xl bg-[var(--paper-blue)] shrink-0 flex items-center justify-center border-2 border-[var(--ink)]">
-            {memory.mediaType === 'photo' && displayUrl ? (
+            {memory.mediaType === 'photo' && displayUrl && !imgError ? (
               <img
                 src={displayUrl}
                 alt={memory.altText || memory.title || 'Memory photo'}
                 loading="lazy"
                 referrerPolicy="no-referrer"
+                onError={() => setImgError(true)}
                 className="block w-auto h-auto max-w-[64px] max-h-[64px] rounded-lg object-contain"
               />
+            ) : memory.mediaType === 'photo' ? (
+              <div className="w-12 h-12 flex items-center justify-center">
+                <Camera className="w-6 h-6 text-[var(--text-muted)]" />
+              </div>
             ) : memory.mediaType === 'video' ? (
               <div className="w-12 h-12 flex items-center justify-center">
                 <Film className="w-6 h-6 text-[var(--accent)]" />
@@ -459,14 +469,20 @@ export const MemoryCard: React.FC<{
             className="flex items-center justify-center cursor-pointer text-left focus:outline-none max-w-full"
             aria-label={`Open memory: ${memory.title || 'Untitled'}`}
           >
-            {memory.mediaType === 'photo' && displayUrl ? (
+            {memory.mediaType === 'photo' && displayUrl && !imgError ? (
               <img
                 src={displayUrl}
                 alt={memory.altText || memory.title || 'Memory photo'}
                 loading="lazy"
                 referrerPolicy="no-referrer"
+                onError={() => setImgError(true)}
                 className="block w-auto h-auto max-w-full max-h-[320px] sm:max-h-[340px] rounded-xl object-contain transition-transform duration-200 group-hover:scale-[1.01]"
               />
+            ) : memory.mediaType === 'photo' ? (
+              <div className="w-44 h-36 flex flex-col items-center justify-center p-3 text-center text-xs text-[var(--text-muted)] space-y-1">
+                <Camera className="w-8 h-8 opacity-40" />
+                <span className="font-space-mono text-[10px]">Photo file removed from storage</span>
+              </div>
             ) : memory.mediaType === 'video' ? (
               memory.mediaUrl ? (
                 <div className="relative inline-flex items-center justify-center max-w-full">

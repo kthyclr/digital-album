@@ -416,8 +416,8 @@ export const TimeCapsuleSection: React.FC = () => {
                   }
                   className="w-full px-3 py-2 rounded-lg text-xs bg-[var(--bg-subtle)] border border-[var(--border-hairline)]"
                 >
-                  <option value="Kathy">Kathy (Moly · Ling)</option>
-                  <option value="Austin">Austin (Love · Kong)</option>
+                  <option value="Kathy">Kathy (Moly · Kong)</option>
+                  <option value="Austin">Austin (Love · Ling)</option>
                   <option value="Both of Us">Both of Us</option>
                   <option value="Our Future Selves">Our Future Selves</option>
                 </select>

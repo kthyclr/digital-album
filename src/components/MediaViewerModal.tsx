@@ -11,6 +11,7 @@ import {
   Star,
   ExternalLink,
   RotateCcw,
+  Camera,
 } from 'lucide-react';
 import { MemoryItem } from '../types/models';
 import { useCouple } from '../context/CoupleContext';
@@ -64,11 +65,13 @@ export const MediaViewerModal: React.FC<{
   const [isSoundtrack, setIsSoundtrack] = useState(false);
   const [externalSongUrl, setExternalSongUrl] = useState('');
   const [soundtrackNotes, setSoundtrackNotes] = useState('');
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     if (!memory) return;
     setIsEditing(false);
     setZoomed(false);
+    setImgError(false);
     setTitle(memory.title);
     setCaption(memory.caption);
     setMemoryDate(memory.memoryDate);
@@ -325,12 +328,13 @@ export const MediaViewerModal: React.FC<{
 
           {/* Media Rendering: Frame matches the picture/video dimensions with clean padding */}
           {memory.mediaType === 'photo' ? (
-            displayMediaUrl ? (
+            displayMediaUrl && !imgError ? (
               <div className="inline-flex items-center justify-center p-2 sm:p-3 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink-faint)] max-w-full overflow-auto">
                 <img
                   src={displayMediaUrl}
                   alt={memory.altText || memory.title || 'Memory photograph'}
                   referrerPolicy="no-referrer"
+                  onError={() => setImgError(true)}
                   className={`block rounded-xl transition-transform duration-200 ${
                     zoomed
                       ? 'scale-150 cursor-zoom-out'
@@ -340,9 +344,15 @@ export const MediaViewerModal: React.FC<{
                 />
               </div>
             ) : (
-              <p className="text-xs text-[var(--text-muted)] py-8">
-                Image preview unavailable.
-              </p>
+              <div className="p-8 rounded-2xl bg-[var(--bg-surface)] border-2 border-dashed border-[var(--ink-faint)] text-center space-y-2">
+                <Camera className="w-10 h-10 mx-auto text-[var(--text-muted)]" />
+                <p className="text-sm font-semibold text-[var(--ink)]">
+                  Photo file is no longer in Supabase storage
+                </p>
+                <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto">
+                  The original image file was removed from storage. The title, date, notes, and tags remain in your album until you move this memory to Trash or delete it.
+                </p>
+              </div>
             )
           ) : memory.mediaType === 'video' ? (
             displayMediaUrl ? (

@@ -75,6 +75,15 @@ export async function bootstrapAuthorizedCoupleMember(
         updatedAt: serverTimestamp(),
         updatedBy: uid,
       });
+    } else {
+      const data = coupleSnap.data();
+      if (!data.logoUrl || data.logoUrl.startsWith('/src/assets/')) {
+        await updateDoc(coupleDocRef, {
+          logoUrl: DEFAULT_COUPLE_CONFIG.logoUrl,
+          updatedAt: serverTimestamp(),
+          updatedBy: uid,
+        });
+      }
     }
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, couplePath);
@@ -95,6 +104,14 @@ export async function bootstrapAuthorizedCoupleMember(
         joinedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+    } else {
+      const mData = memberSnap.data();
+      if (mData.endearment !== partnerInfo.endearmentBadge) {
+        await updateDoc(memberDocRef, {
+          endearment: partnerInfo.endearmentBadge,
+          updatedAt: serverTimestamp(),
+        });
+      }
     }
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, memberPath);

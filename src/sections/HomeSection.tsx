@@ -82,7 +82,7 @@ export const HomeSection: React.FC<{
     PARTNER_PROFILES[(user.email || '').toLowerCase()] || {
       name: user.displayName || 'Love',
       affectionate: 'Moly',
-      funny: 'Ling',
+      funny: 'Kong',
     };
 
   const handleCycleFeatured = async () => {

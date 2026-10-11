@@ -233,7 +233,15 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
       doc(db, 'couples', COUPLE_SPACE_ID),
       (snap) => {
         if (snap.exists()) {
-          setCoupleConfig(snap.data() as CoupleConfig);
+          const data = snap.data() as CoupleConfig;
+          setCoupleConfig({
+            ...DEFAULT_COUPLE_CONFIG,
+            ...data,
+            logoUrl:
+              data.logoUrl && !data.logoUrl.startsWith('/src/assets/')
+                ? data.logoUrl
+                : DEFAULT_COUPLE_CONFIG.logoUrl,
+          });
         }
       },
       (err) => {

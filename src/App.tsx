@@ -143,17 +143,19 @@ const AuthenticatedShell: React.FC = () => {
             type="button"
             onClick={() => handleNavigate('home')}
             className="flex items-center gap-2.5 text-left group cursor-pointer"
+            aria-label="Go to Home"
           >
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 border-[var(--ink)] bg-[var(--paper-pink)] overflow-hidden shrink-0 flex items-center justify-center shadow-xs transition-transform group-hover:scale-105">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-[var(--ink)] bg-[var(--paper-pink)] overflow-hidden shrink-0 flex items-center justify-center shadow-xs transition-all group-hover:scale-105 group-hover:rotate-2">
               {coupleConfig.logoUrl ? (
                 <img
                   src={coupleConfig.logoUrl}
-                  alt="Couple Logo"
+                  alt="Kathy & Austin Logo"
                   className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
                 />
               ) : (
-                <span className="font-space-mono text-xs font-bold">M&amp;L</span>
+                <span className="font-space-mono text-xs sm:text-sm font-bold tracking-tight text-[var(--ink)] select-none">
+                  A &amp; K
+                </span>
               )}
             </div>
           </button>
