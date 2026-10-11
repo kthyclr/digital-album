@@ -137,7 +137,7 @@ const AuthenticatedShell: React.FC = () => {
     <div className="min-h-screen flex flex-col text-[var(--ink)]">
       {/* Variation 14 Scrapbook Top Bar */}
       <header className="sticky top-0 z-30 bg-[var(--bg-canvas)]/95 backdrop-blur-xs border-b-2 border-dashed border-[var(--ink-faint)]">
-        <div className="max-w-[1440px] mx-auto px-3.5 sm:px-8 lg:px-10 py-2.5 sm:py-3.5 flex items-center justify-between gap-3 sm:gap-8">
+        <div className="max-w-[1440px] mx-auto px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-3 sm:gap-8">
           {/* Zone 1: Gaegu Wordmark */}
           <button
             type="button"
@@ -199,7 +199,7 @@ const AuthenticatedShell: React.FC = () => {
 
       {/* Secondary Section Ribbon for All 8 Scrapbook Tabs */}
       <div className="border-b-2 border-dashed border-[var(--ink-faint)] bg-[var(--bg-surface)]/60">
-        <div className="max-w-[1440px] mx-auto px-3 sm:px-8 lg:px-10 py-2 sm:py-2.5 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
+        <div className="max-w-[1440px] mx-auto px-3 sm:px-5 lg:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
           <div className="flex items-center gap-1.5 sm:gap-2">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
@@ -232,7 +232,7 @@ const AuthenticatedShell: React.FC = () => {
 
       {/* Collapsible Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[var(--bg-surface)] border-b-2 border-[var(--ink)] px-3.5 py-3 grid grid-cols-2 gap-2">
+        <div className="md:hidden bg-[var(--bg-surface)] border-b-2 border-[var(--ink)] px-3 py-3 grid grid-cols-2 gap-2">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
@@ -256,7 +256,7 @@ const AuthenticatedShell: React.FC = () => {
       )}
 
       {/* Main Content Container */}
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-3.5 sm:px-8 lg:px-10 py-5 sm:py-8">
+      <main className="flex-1 w-full max-w-[1440px] mx-auto px-3 sm:px-5 lg:px-6 py-5 sm:py-8">
         {activeSection === 'home' && (
           <HomeSection
             onNavigate={handleNavigate}
@@ -306,7 +306,7 @@ const AuthenticatedShell: React.FC = () => {
 
       {/* Variation 14 Dashed Space Mono Footer */}
       <footer className="w-full border-t-2 border-dashed border-[var(--ink-faint)] mt-8 sm:mt-14">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-10 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 font-space-mono text-[0.65rem] uppercase tracking-[0.1em] opacity-60 text-center sm:text-left">
+        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 font-space-mono text-[0.65rem] uppercase tracking-[0.1em] opacity-60 text-center sm:text-left">
           <div>
             <span>
               {coupleConfig.displayName} · {coupleConfig.partnerOneName} &amp;{' '}
