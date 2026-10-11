@@ -54,6 +54,7 @@ export const MemoriesSection: React.FC<{
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [selectedCreator, setSelectedCreator] = useState<string>('all');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('date-desc');
   const [visibleCount, setVisibleCount] = useState(18);
@@ -91,6 +92,14 @@ export const MemoriesSection: React.FC<{
     return Array.from(tSet).sort();
   }, [baseMemories]);
 
+  const availableCreators = useMemo(() => {
+    const cSet = new Set<string>();
+    baseMemories.forEach((m) => {
+      if (m.creatorName) cSet.add(m.creatorName);
+    });
+    return Array.from(cSet).sort();
+  }, [baseMemories]);
+
   const filteredAndSortedMemories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
@@ -113,6 +122,8 @@ export const MemoriesSection: React.FC<{
       )
         return false;
       if (selectedTag !== 'all' && !m.tags.includes(selectedTag)) return false;
+      if (selectedCreator !== 'all' && m.creatorName !== selectedCreator)
+        return false;
       if (onlyFavorites && !m.favoritedBy.includes(user.uid)) return false;
 
       if (q) {
@@ -160,6 +171,7 @@ export const MemoriesSection: React.FC<{
     selectedMonth,
     selectedAlbumId,
     selectedTag,
+    selectedCreator,
     onlyFavorites,
     sortBy,
     user.uid,
@@ -193,6 +205,7 @@ export const MemoriesSection: React.FC<{
     selectedMonth !== 'all' ||
     selectedAlbumId !== 'all' ||
     selectedTag !== 'all' ||
+    selectedCreator !== 'all' ||
     onlyFavorites;
 
   const clearAllFilters = () => {
@@ -202,6 +215,7 @@ export const MemoriesSection: React.FC<{
     setSelectedMonth('all');
     setSelectedAlbumId('all');
     setSelectedTag('all');
+    setSelectedCreator('all');
     setOnlyFavorites(false);
   };
 
@@ -542,6 +556,22 @@ export const MemoriesSection: React.FC<{
                 {availableTags.map((t) => (
                   <option key={t} value={t}>
                     #{t}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {availableCreators.length > 0 && (
+              <select
+                value={selectedCreator}
+                onChange={(e) => setSelectedCreator(e.target.value)}
+                aria-label="Filter by uploader"
+                className="px-2.5 py-1.5 rounded-lg text-xs bg-[var(--bg-subtle)] border border-[var(--border-hairline)] text-[var(--text-primary)]"
+              >
+                <option value="all">Added by Anyone</option>
+                {availableCreators.map((creator) => (
+                  <option key={creator} value={creator}>
+                    Added by {creator}
                   </option>
                 ))}
               </select>
