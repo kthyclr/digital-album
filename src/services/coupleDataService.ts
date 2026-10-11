@@ -207,14 +207,20 @@ export interface UploadMemoryParams {
 }
 
 /**
- * Uploads photos, videos, and audio files to Supabase Storage (primary media engine),
- * with an instant Firestore preview fallback for photos/small audio if Supabase env vars are not yet added.
+ * Uploads photos, videos, and audio files exclusively to Supabase Storage (bucket: "digital-album"),
+ * and saves the memory metadata record to Firebase Cloud Firestore.
  */
 export async function uploadAndCreateMemory(
   params: UploadMemoryParams
 ): Promise<string> {
   const user = auth.currentUser;
   if (!user) throw new Error('You must be signed in to upload memories.');
+
+  if (!isSupabaseStorageConfigured() || !supabase) {
+    throw new Error(
+      'Supabase Storage is not configured. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.'
+    );
+  }
 
   const memoryColRef = collection(db, 'couples', COUPLE_SPACE_ID, 'memories');
   const newMemoryDocRef = doc(memoryColRef);
@@ -225,79 +231,31 @@ export async function uploadAndCreateMemory(
     .slice(0, 180);
   const objectStoragePath = `couples/${COUPLE_SPACE_ID}/memories/${memoryId}/${Date.now()}_${safeFileName}`;
 
-  if (params.onProgress) params.onProgress(15);
+  if (params.onProgress) params.onProgress(20);
 
-  // Generate compact preview thumbnail for photos right away
-  const thumbnailUrl = await generateImagePreviewDataUrl(params.file, 960, 0.75);
-  if (params.onProgress) params.onProgress(35);
+  // 1. Upload binary file (photo, video, or audio) exclusively to Supabase Storage
+  const { error: upError } = await supabase.storage
+    .from(supabaseBucket)
+    .upload(objectStoragePath, params.file, {
+      contentType: params.file.type || 'application/octet-stream',
+      cacheControl: '3600',
+      upsert: true,
+    });
 
-  let uploadedStoragePath = '';
-  let resolvedMediaUrl = '';
-
-  const fallbackToFastFirestoreMedia = async (reason?: string) => {
-    if (params.mediaType === 'photo' && thumbnailUrl) {
-      uploadedStoragePath = '';
-      resolvedMediaUrl = thumbnailUrl;
-      if (params.onProgress) params.onProgress(100);
-      return;
-    }
-    if (params.file.size <= 520 * 1024) {
-      const inlineDataUrl = await new Promise<string>((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = () =>
-          res(typeof reader.result === 'string' ? reader.result : '');
-        reader.onerror = () => rej(new Error(reason || 'File read error'));
-        reader.readAsDataURL(params.file);
-      });
-      if (inlineDataUrl && inlineDataUrl.length <= 740000) {
-        uploadedStoragePath = '';
-        resolvedMediaUrl = inlineDataUrl;
-        if (params.onProgress) params.onProgress(100);
-        return;
-      }
-    }
+  if (upError) {
     throw new Error(
-      reason ||
-        'To upload full-size videos and audio files, please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (with a public "memories" bucket in Supabase).'
-    );
-  };
-
-  // Primary Media Storage: Supabase Storage (for photos, videos, and audio)
-  if (isSupabaseStorageConfigured() && supabase) {
-    try {
-      if (params.onProgress) params.onProgress(60);
-      const { error: upError } = await supabase.storage
-        .from(supabaseBucket)
-        .upload(objectStoragePath, params.file, {
-          contentType: params.file.type || 'application/octet-stream',
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (upError) {
-        throw new Error(`Supabase Storage (${supabaseBucket}): ${upError.message}`);
-      }
-
-      const { data: pubData } = supabase.storage
-        .from(supabaseBucket)
-        .getPublicUrl(objectStoragePath);
-
-      uploadedStoragePath = `supabase:${objectStoragePath}`;
-      resolvedMediaUrl = pubData.publicUrl;
-      if (params.onProgress) params.onProgress(100);
-    } catch (supaErr: unknown) {
-      const msg =
-        supaErr instanceof Error ? supaErr.message : 'Supabase upload failed.';
-      // For photos or compact audio, allow instant Firestore fallback if bucket isn't created yet;
-      // for large video/audio, surface the exact Supabase bucket error clearly.
-      await fallbackToFastFirestoreMedia(msg);
-    }
-  } else {
-    // Supabase env vars not set yet — use instant Firestore fallback for photos/small audio
-    await fallbackToFastFirestoreMedia(
-      'Supabase Storage is not configured yet (missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).'
+      `Supabase Storage upload failed (${supabaseBucket}): ${upError.message}`
     );
   }
+
+  if (params.onProgress) params.onProgress(75);
+
+  const { data: pubData } = supabase.storage
+    .from(supabaseBucket)
+    .getPublicUrl(objectStoragePath);
+
+  const uploadedStoragePath = `supabase:${objectStoragePath}`;
+  const resolvedMediaUrl = pubData.publicUrl;
 
   // Parse memoryYear and memoryMonth from memoryDate
   const dateParts = params.memoryDate.split('-').map((p) => parseInt(p, 10));
@@ -334,13 +292,7 @@ export async function uploadAndCreateMemory(
     )
   ).slice(0, 10);
 
-  // When uploaded to Supabase Storage, use the fast public CDN URL directly and avoid bloating Firestore with a 350KB base64 thumbnail
-  const storedThumbnailUrl = uploadedStoragePath.startsWith('supabase:')
-    ? ''
-    : uploadedStoragePath && thumbnailUrl
-    ? thumbnailUrl.slice(0, 350000)
-    : '';
-
+  // 2. Save metadata record to Firebase Cloud Firestore
   const memoryRecord = {
     title: params.title.trim().slice(0, 160),
     caption: params.caption.trim().slice(0, 2000),
@@ -351,7 +303,7 @@ export async function uploadAndCreateMemory(
     mediaType: params.mediaType,
     storagePath: uploadedStoragePath.slice(0, 500),
     mediaUrl: resolvedMediaUrl.slice(0, 750000),
-    thumbnailUrl: storedThumbnailUrl,
+    thumbnailUrl: '',
     originalFileName: params.file.name.slice(0, 255),
     contentType: (params.file.type || 'application/octet-stream').slice(0, 100),
     sizeBytes: params.file.size,
@@ -376,19 +328,12 @@ export async function uploadAndCreateMemory(
   const docPath = `couples/${COUPLE_SPACE_ID}/memories/${memoryId}`;
   try {
     await setDoc(newMemoryDocRef, memoryRecord);
+    if (params.onProgress) params.onProgress(100);
     return memoryId;
   } catch (firestoreErr) {
-    // Cleanup orphaned Storage file if Firestore metadata write failed
-    if (uploadedStoragePath.startsWith('supabase:') && supabase) {
-      const cleanPath = uploadedStoragePath.replace(/^supabase:/, '');
-      await supabase.storage.from(supabaseBucket).remove([cleanPath]);
-    } else if (uploadedStoragePath) {
-      try {
-        await deleteObject(storageRef(storage, uploadedStoragePath));
-      } catch (cleanupErr) {
-        console.error('Failed to clean up orphaned Storage object:', cleanupErr);
-      }
-    }
+    // Cleanup orphaned Supabase Storage file if Firestore metadata write failed
+    const cleanPath = uploadedStoragePath.replace(/^supabase:/, '');
+    await supabase.storage.from(supabaseBucket).remove([cleanPath]);
     handleFirestoreError(firestoreErr, OperationType.CREATE, docPath);
   }
 }
