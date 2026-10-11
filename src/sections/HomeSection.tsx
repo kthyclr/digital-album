@@ -457,7 +457,7 @@ export const HomeSection: React.FC<{
                   <button
                     type="button"
                     onClick={() => onOpenMemory(featuredMemory)}
-                    className="inline-flex items-center justify-center p-2.5 sm:p-3 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink-faint)] cursor-pointer group max-w-full"
+                    className="inline-flex items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink-faint)] cursor-pointer group max-w-full"
                   >
                     {featuredMemory.mediaType === 'photo' &&
                     (featuredMemory.thumbnailUrl || featuredMemory.mediaUrl) ? (

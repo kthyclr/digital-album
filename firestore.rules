@@ -52,7 +52,7 @@ service cloud.firestore {
       data.keys().hasOnly([
         'displayName', 'subtitle', 'partnerOneName', 'partnerTwoName',
         'affectionateLabelOne', 'affectionateLabelTwo', 'funnyLabelOne', 'funnyLabelTwo',
-        'relationshipStartDate', 'partnerOneBirthday', 'partnerTwoBirthday', 'timezone', 'featuredMemoryId',
+        'relationshipStartDate', 'partnerOneBirthday', 'partnerTwoBirthday', 'logoUrl', 'timezone', 'featuredMemoryId',
         'maxFileSizeMB', 'trashRetentionDays', 'createdAt', 'updatedAt', 'updatedBy'
       ]) &&
       data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
@@ -66,6 +66,7 @@ service cloud.firestore {
       data.relationshipStartDate is string && data.relationshipStartDate.size() >= 8 && data.relationshipStartDate.size() <= 40 &&
       (!('partnerOneBirthday' in data) || (data.partnerOneBirthday is string && data.partnerOneBirthday.size() <= 40)) &&
       (!('partnerTwoBirthday' in data) || (data.partnerTwoBirthday is string && data.partnerTwoBirthday.size() <= 40)) &&
+      (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 500)) &&
       data.timezone is string && data.timezone.size() >= 1 && data.timezone.size() <= 80 &&
       data.featuredMemoryId is string && data.featuredMemoryId.size() <= 128 &&
       data.maxFileSizeMB is number && data.maxFileSizeMB >= 1 && data.maxFileSizeMB <= 500 &&
@@ -264,14 +265,14 @@ service cloud.firestore {
         incoming().diff(existing()).affectedKeys().hasOnly([
           'displayName', 'subtitle', 'partnerOneName', 'partnerTwoName',
           'affectionateLabelOne', 'affectionateLabelTwo', 'funnyLabelOne', 'funnyLabelTwo',
-          'relationshipStartDate', 'partnerOneBirthday', 'partnerTwoBirthday', 'timezone', 'featuredMemoryId',
+          'relationshipStartDate', 'partnerOneBirthday', 'partnerTwoBirthday', 'logoUrl', 'timezone', 'featuredMemoryId',
           'maxFileSizeMB', 'trashRetentionDays', 'updatedAt', 'updatedBy'
         ]);
 
       // Couple Members Subcollection
       match /members/{memberUid} {
         allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memberUid);
-        allow list: if isCoupleSpace(coupleId) && existing().status == 'active';
+        allow list: if isCoupleSpace(coupleId);
         allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memberUid) &&
           isValidMember(incoming(), memberUid) &&
           incoming().joinedAt == request.time &&
@@ -291,7 +292,7 @@ service cloud.firestore {
       // Memories Subcollection
       match /memories/{memoryId} {
         allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memoryId);
-        allow list: if isCoupleSpace(coupleId) && (existing().status == 'active' || existing().status == 'trashed');
+        allow list: if isCoupleSpace(coupleId);
         allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memoryId) &&
           isValidMemory(incoming()) &&
           incoming().createdBy == request.auth.uid &&
@@ -321,7 +322,7 @@ service cloud.firestore {
       // Custom Albums Subcollection
       match /albums/{albumId} {
         allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(albumId);
-        allow list: if isCoupleSpace(coupleId) && existing().sortOrder >= 0;
+        allow list: if isCoupleSpace(coupleId);
         allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(albumId) &&
           isValidAlbum(incoming()) &&
           incoming().createdBy == request.auth.uid &&
@@ -341,7 +342,7 @@ service cloud.firestore {
       // Our Story Milestones Subcollection
       match /milestones/{milestoneId} {
         allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(milestoneId);
-        allow list: if isCoupleSpace(coupleId) && existing().eventDate.size() >= 8;
+        allow list: if isCoupleSpace(coupleId);
         allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(milestoneId) &&
           isValidMilestone(incoming()) &&
           incoming().createdBy == request.auth.uid &&
@@ -361,7 +362,7 @@ service cloud.firestore {
       // Time Capsule Letter Envelopes Subcollection
       match /letters/{letterId} {
         allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId);
-        allow list: if isCoupleSpace(coupleId) && existing().title.size() >= 1;
+        allow list: if isCoupleSpace(coupleId);
         allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
           isValidLetter(incoming()) &&
           incoming().createdBy == request.auth.uid &&
@@ -421,7 +422,7 @@ service cloud.firestore {
       // Shared Bucket List Subcollection
       match /bucketItems/{itemId} {
         allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(itemId);
-        allow list: if isCoupleSpace(coupleId) && existing().title.size() >= 1;
+        allow list: if isCoupleSpace(coupleId);
         allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(itemId) &&
           isValidBucketItem(incoming()) &&
           incoming().createdBy == request.auth.uid &&

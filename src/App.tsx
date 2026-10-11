@@ -138,14 +138,24 @@ const AuthenticatedShell: React.FC = () => {
       {/* Variation 14 Scrapbook Top Bar */}
       <header className="sticky top-0 z-30 bg-[var(--bg-canvas)]/95 backdrop-blur-xs border-b-2 border-dashed border-[var(--ink-faint)]">
         <div className="max-w-[1440px] mx-auto px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-3 sm:gap-8">
-          {/* Zone 1: Gaegu Wordmark */}
+          {/* Zone 1: Logo */}
           <button
             type="button"
             onClick={() => handleNavigate('home')}
-            className="font-gaegu text-3xl sm:text-4xl lg:text-5xl leading-[0.85] tracking-[-0.04em] font-bold text-[var(--ink)] truncate max-w-[190px] sm:max-w-none shrink-0 cursor-pointer text-left"
+            className="flex items-center gap-2.5 text-left group cursor-pointer"
           >
-            {coupleConfig.affectionateLabelOne} &amp;{' '}
-            {coupleConfig.affectionateLabelTwo}
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 border-[var(--ink)] bg-[var(--paper-pink)] overflow-hidden shrink-0 flex items-center justify-center shadow-xs transition-transform group-hover:scale-105">
+              {coupleConfig.logoUrl ? (
+                <img
+                  src={coupleConfig.logoUrl}
+                  alt="Couple Logo"
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="font-space-mono text-xs font-bold">M&amp;L</span>
+              )}
+            </div>
           </button>
 
           {/* Zone 2: Space Mono Navigation Links */}

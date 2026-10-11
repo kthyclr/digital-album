@@ -8,6 +8,9 @@ import {
   LogOut,
   Save,
   Cake,
+  Upload,
+  ImageIcon,
+  Loader2,
 } from 'lucide-react';
 import { useCouple } from '../context/CoupleContext';
 import { SectionHeader } from '../components/SharedUI';
@@ -17,6 +20,7 @@ import {
 } from '../services/coupleDataService';
 import { AUTHORIZED_EMAILS } from '../config/coupleConfig';
 import { calculateBirthdayInfo } from '../utils/dateUtils';
+import { supabase, supabaseBucket, isSupabaseStorageConfigured } from '../lib/supabase';
 
 export const SettingsSection: React.FC = () => {
   const {
@@ -61,6 +65,7 @@ export const SettingsSection: React.FC = () => {
     coupleConfig.partnerTwoBirthday || ''
   );
   const [timezone, setTimezone] = useState(coupleConfig.timezone);
+  const [logoUrl, setLogoUrl] = useState(coupleConfig.logoUrl || '');
   const [maxFileSizeMB, setMaxFileSizeMB] = useState(
     coupleConfig.maxFileSizeMB
   );
@@ -68,6 +73,67 @@ export const SettingsSection: React.FC = () => {
     coupleConfig.trashRetentionDays
   );
   const [savingConfig, setSavingConfig] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      addToast('Please select a valid image file (JPEG, PNG, WebP)', 'error');
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      addToast('Image file size must be less than 15MB', 'error');
+      return;
+    }
+
+    if (!isSupabaseStorageConfigured() || !supabase) {
+      addToast('Supabase Storage is not configured.', 'error');
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const cleanName = file.name.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40);
+      const storagePath = `couples/kathy-austin-space/branding/logo_${Date.now()}_${cleanName}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(supabaseBucket)
+        .upload(storagePath, file, {
+          contentType: file.type,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: pubData } = supabase.storage
+        .from(supabaseBucket)
+        .getPublicUrl(storagePath);
+
+      const publicUrl = pubData.publicUrl;
+      setLogoUrl(publicUrl);
+      patchLocalCoupleConfig({ logoUrl: publicUrl });
+
+      // Save to Firestore
+      await updateCoupleConfiguration(coupleConfig, { logoUrl: publicUrl });
+      addToast('Logo successfully uploaded to Supabase Storage & updated!', 'success');
+    } catch (err) {
+      console.error('Logo upload error:', err);
+      addToast(
+        'Failed to upload logo to Supabase',
+        'error',
+        err instanceof Error ? err.message : undefined
+      );
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
+  };
 
   useEffect(() => {
     setDisplayName(coupleConfig.displayName);
@@ -82,6 +148,7 @@ export const SettingsSection: React.FC = () => {
     setPartnerOneBirthday(coupleConfig.partnerOneBirthday || '');
     setPartnerTwoBirthday(coupleConfig.partnerTwoBirthday || '');
     setTimezone(coupleConfig.timezone);
+    setLogoUrl(coupleConfig.logoUrl || '');
     setMaxFileSizeMB(coupleConfig.maxFileSizeMB);
     setTrashRetentionDays(coupleConfig.trashRetentionDays);
   }, [coupleConfig]);
@@ -120,6 +187,7 @@ export const SettingsSection: React.FC = () => {
       partnerOneBirthday,
       partnerTwoBirthday,
       timezone,
+      logoUrl,
       maxFileSizeMB,
       trashRetentionDays,
     };
@@ -456,6 +524,106 @@ export const SettingsSection: React.FC = () => {
                 onChange={(e) => setTimezone(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-xs bg-[var(--bg-subtle)] border border-[var(--border-hairline)] font-mono-tabular"
               />
+            </div>
+
+            {/* Couple Logo Upload & Preview Section */}
+            <div className="sm:col-span-2 p-4 rounded-2xl bg-[var(--paper-pink)]/60 border-2 border-dashed border-[var(--ink)] space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-[var(--accent)]" />
+                  <label className="text-xs font-bold text-[var(--ink)]">
+                    Website Couple Logo (Hosted on Supabase Storage)
+                  </label>
+                </div>
+                {logoUrl && (
+                  <span className="text-[10px] font-space-mono text-[var(--ink)] font-bold uppercase bg-[var(--paper-yellow)] px-2 py-0.5 rounded-full border border-[var(--ink)]">
+                    Active Logo
+                  </span>
+                )}
+              </div>
+
+              <p className="text-[11px] text-[var(--text-secondary)]">
+                The round logo displayed on the top navigation bar and scrapbook header. Upload your picture directly to Supabase Storage (<code className="font-mono text-[10px]">digital-album</code> bucket) to make it your permanent logo.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-1">
+                {/* Circular Logo Preview */}
+                <div className="relative group shrink-0">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-[var(--ink)] bg-[var(--paper-pink)] overflow-hidden shadow-xs flex items-center justify-center">
+                    {logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt="Couple Logo Preview"
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <span className="font-space-mono text-sm font-bold text-[var(--ink)]">M&amp;L</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Upload & Actions */}
+                <div className="flex-1 space-y-2 w-full">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label
+                      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border-2 border-[var(--ink)] shadow-xs transition-all cursor-pointer ${
+                        uploadingLogo
+                          ? 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] cursor-not-allowed'
+                          : 'bg-[var(--paper-yellow)] hover:bg-[var(--paper-pink)] active:translate-y-0.5'
+                      }`}
+                    >
+                      {uploadingLogo ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Uploading to Supabase...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Upload Picture as Logo</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingLogo}
+                        onChange={handleLogoFileUpload}
+                        className="sr-only"
+                      />
+                    </label>
+
+                    {logoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const fallbackUrl =
+                            'https://ecxdhqmalqtgywsclkqu.supabase.co/storage/v1/object/public/digital-album/couples/kathy-austin-space/branding/couple_logo_1791742767554.jpg';
+                          setLogoUrl(fallbackUrl);
+                          patchLocalCoupleConfig({ logoUrl: fallbackUrl });
+                          updateCoupleConfiguration(coupleConfig, { logoUrl: fallbackUrl });
+                          addToast('Reset logo to default picture', 'info');
+                        }}
+                        className="px-2.5 py-1.5 text-[11px] font-space-mono text-[var(--text-secondary)] hover:text-[var(--ink)] underline cursor-pointer"
+                      >
+                        Reset Default
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Direct URL Input */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="text"
+                      maxLength={500}
+                      value={logoUrl}
+                      onChange={(e) => setLogoUrl(e.target.value)}
+                      placeholder="https://... or Supabase public URL"
+                      className="w-full px-3 py-1.5 rounded-lg text-[11px] bg-[var(--bg-canvas)] border border-[var(--ink-faint)] font-mono-tabular"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Dedicated Birthdays & Celebrations Block */}

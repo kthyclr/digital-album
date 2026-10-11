@@ -145,6 +145,7 @@ export async function updateCoupleConfiguration(
     partnerTwoBirthday: (updates.partnerTwoBirthday ?? currentConfig.partnerTwoBirthday ?? '').trim().slice(0, 40),
     timezone: (updates.timezone ?? currentConfig.timezone).trim().slice(0, 80),
     featuredMemoryId: (updates.featuredMemoryId ?? currentConfig.featuredMemoryId ?? '').trim().slice(0, 128),
+    logoUrl: (updates.logoUrl ?? currentConfig.logoUrl ?? '').trim().slice(0, 500),
     maxFileSizeMB: Math.min(500, Math.max(1, Number(updates.maxFileSizeMB ?? currentConfig.maxFileSizeMB))),
     trashRetentionDays: Math.min(365, Math.max(1, Number(updates.trashRetentionDays ?? currentConfig.trashRetentionDays))),
     updatedAt: serverTimestamp(),
