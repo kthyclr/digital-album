@@ -73,7 +73,10 @@ export const UploadMemoryModal: React.FC<{
 
   if (!open) return null;
 
-  const handleFilesSelected = (fileList: FileList | null) => {
+  const handleFilesSelected = (
+    fileList: FileList | null,
+    inputElement?: HTMLInputElement | null
+  ) => {
     if (!fileList || fileList.length === 0) return;
     const incomingFiles = Array.from(fileList);
 
@@ -120,6 +123,10 @@ export const UploadMemoryModal: React.FC<{
     }
 
     setQueue((prev) => [...prev, ...newItems]);
+    // Reset file input value so the user can add more files in another batch if desired
+    if (inputElement) {
+      inputElement.value = '';
+    }
   };
 
   const updateQueueItem = (
@@ -160,7 +167,7 @@ export const UploadMemoryModal: React.FC<{
   const runUploadForSingleItem = async (item: QueuedUploadItem) => {
     updateQueueItem(item.id, {
       status: 'uploading',
-      progress: 5,
+      progress: 10,
       error: undefined,
     });
 
@@ -216,10 +223,17 @@ export const UploadMemoryModal: React.FC<{
     let successCount = 0;
     let failCount = 0;
 
-    for (const item of eligible) {
-      const ok = await runUploadForSingleItem(item);
-      if (ok) successCount++;
-      else failCount++;
+    // Upload in parallel batches of up to 4 files simultaneously for fast bulk uploads
+    const CONCURRENCY = 4;
+    for (let i = 0; i < eligible.length; i += CONCURRENCY) {
+      const chunk = eligible.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(
+        chunk.map((item) => runUploadForSingleItem(item))
+      );
+      results.forEach((ok) => {
+        if (ok) successCount++;
+        else failCount++;
+      });
     }
 
     setIsUploadingBatch(false);
@@ -323,10 +337,10 @@ export const UploadMemoryModal: React.FC<{
             </div>
             <div className="space-y-1">
               <p className="text-sm font-medium text-[var(--text-primary)]">
-                Drag and drop photos, videos, or voice notes here
+                Drag and drop multiple photos, videos, or voice notes here
               </p>
               <p className="text-xs text-[var(--text-secondary)]">
-                Original files are preserved without silent compression.
+                Bulk upload supported — select as many files as you like at once (Ctrl/Cmd+Click on desktop, or multi-select in your phone gallery).
               </p>
             </div>
             <div>
@@ -334,16 +348,16 @@ export const UploadMemoryModal: React.FC<{
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mpeg,audio/mp3,audio/mp4,audio/aac,audio/wav,audio/webm"
-                onChange={(e) => handleFilesSelected(e.target.files)}
+                accept="image/*,video/*,audio/*"
+                onChange={(e) => handleFilesSelected(e.target.files, e.target)}
                 className="hidden"
               />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 rounded-lg text-xs font-medium bg-[var(--accent-blue)] text-white hover:bg-[var(--accent-blue-hover)] transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                className="scrapbook-btn-primary px-5 py-2.5 text-xs cursor-pointer whitespace-nowrap shrink-0"
               >
-                Choose Files from Device
+                Select Single or Multiple Files
               </button>
             </div>
           </div>

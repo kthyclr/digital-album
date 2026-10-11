@@ -199,6 +199,10 @@ export interface UploadMemoryParams {
   onTaskCreated?: (task: UploadTask) => void;
 }
 
+// Track whether Firebase Cloud Storage bucket is reachable in this session
+// so we don't wait on network retries if Storage is not yet enabled on the project.
+let storageBucketAvailable = true;
+
 /**
  * Uploads a media file to Firebase Storage (with resumable progress and preview fallback)
  * and writes validated metadata to Firestore only after upload succeeds.
@@ -219,82 +223,123 @@ export async function uploadAndCreateMemory(
     .slice(0, 180);
   const objectStoragePath = `couples/${COUPLE_SPACE_ID}/memories/${memoryId}/${Date.now()}_${safeFileName}`;
 
-  // Generate thumbnail preview for photos
-  const thumbnailUrl = await generateImagePreviewDataUrl(params.file, 850, 0.78);
+  if (params.onProgress) params.onProgress(15);
+
+  // Generate high-clarity preview for photos right away
+  const thumbnailUrl = await generateImagePreviewDataUrl(params.file, 1200, 0.82);
+  if (params.onProgress) params.onProgress(40);
 
   let uploadedStoragePath = '';
   let resolvedMediaUrl = '';
 
-  try {
-    const fileRef = storageRef(storage, objectStoragePath);
-    const uploadTask = uploadBytesResumable(fileRef, params.file, {
-      contentType: params.file.type,
-      customMetadata: {
-        createdBy: user.uid,
-        memoryId,
-      },
-    });
-
-    if (params.onTaskCreated) {
-      params.onTaskCreated(uploadTask);
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          if (snapshot.totalBytes > 0 && params.onProgress) {
-            const pct = Math.round(
-              (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-            );
-            params.onProgress(pct);
-          }
-        },
-        (error) => {
-          reject(error);
-        },
-        () => {
-          resolve();
-        }
-      );
-    });
-
-    uploadedStoragePath = objectStoragePath;
-    resolvedMediaUrl = await getDownloadURL(fileRef);
-  } catch (storageErr: unknown) {
-    // Check if the user cancelled the upload
-    if (
-      storageErr &&
-      typeof storageErr === 'object' &&
-      'code' in storageErr &&
-      (storageErr as { code: string }).code === 'storage/canceled'
-    ) {
-      throw new Error('Upload was cancelled.');
-    }
-
-    // If Firebase Storage bucket isn't initialized yet in the cloud project,
-    // allow safe inline fallback ONLY for compact files (< 650 KB) or image previews
+  const fallbackToFastFirestoreMedia = async (originalError?: unknown) => {
     if (params.mediaType === 'photo' && thumbnailUrl) {
       uploadedStoragePath = '';
       resolvedMediaUrl = thumbnailUrl;
       if (params.onProgress) params.onProgress(100);
-    } else if (params.file.size <= 500 * 1024) {
+      return;
+    }
+    if (params.file.size <= 520 * 1024) {
       const inlineDataUrl = await new Promise<string>((res, rej) => {
         const reader = new FileReader();
         reader.onload = () =>
           res(typeof reader.result === 'string' ? reader.result : '');
-        reader.onerror = () => rej(storageErr);
+        reader.onerror = () => rej(originalError || new Error('File read error'));
         reader.readAsDataURL(params.file);
       });
       if (inlineDataUrl && inlineDataUrl.length <= 740000) {
         uploadedStoragePath = '';
         resolvedMediaUrl = inlineDataUrl;
         if (params.onProgress) params.onProgress(100);
-      } else {
-        throw storageErr;
+        return;
       }
-    } else {
-      throw storageErr;
+    }
+    throw (
+      originalError ||
+      new Error(
+        'For large video or audio files over 500 KB, please enable Cloud Storage in your Firebase Console.'
+      )
+    );
+  };
+
+  if (!storageBucketAvailable) {
+    await fallbackToFastFirestoreMedia();
+  } else {
+    try {
+      const fileRef = storageRef(storage, objectStoragePath);
+      const uploadTask = uploadBytesResumable(fileRef, params.file, {
+        contentType: params.file.type,
+        customMetadata: {
+          createdBy: user.uid,
+          memoryId,
+        },
+      });
+
+      if (params.onTaskCreated) {
+        params.onTaskCreated(uploadTask);
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        let madeProgress = false;
+        // If Storage makes zero progress within 3.5 seconds (e.g., bucket not initialized or CORS blocked),
+        // abort the hung request and use the fast preview pipeline immediately.
+        const stallTimer = setTimeout(() => {
+          if (!madeProgress) {
+            storageBucketAvailable = false;
+            uploadTask.cancel();
+            reject(new Error('storage/stall-timeout'));
+          }
+        }, 3500);
+
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            if (snapshot.bytesTransferred > 0) {
+              madeProgress = true;
+              clearTimeout(stallTimer);
+            }
+            if (snapshot.totalBytes > 0 && params.onProgress) {
+              const pct = Math.max(
+                40,
+                Math.round(
+                  (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+                )
+              );
+              params.onProgress(pct);
+            }
+          },
+          (error) => {
+            clearTimeout(stallTimer);
+            reject(error);
+          },
+          () => {
+            clearTimeout(stallTimer);
+            resolve();
+          }
+        );
+      });
+
+      uploadedStoragePath = objectStoragePath;
+      resolvedMediaUrl = await getDownloadURL(fileRef);
+    } catch (storageErr: unknown) {
+      const errCode =
+        storageErr && typeof storageErr === 'object' && 'code' in storageErr
+          ? (storageErr as { code: string }).code
+          : '';
+      const errMsg =
+        storageErr instanceof Error ? storageErr.message : String(storageErr);
+
+      // Only treat as user cancellation if it wasn't our stall-timeout detector
+      if (
+        errCode === 'storage/canceled' &&
+        !errMsg.includes('storage/stall-timeout') &&
+        storageBucketAvailable
+      ) {
+        throw new Error('Upload was cancelled.');
+      }
+
+      storageBucketAvailable = false;
+      await fallbackToFastFirestoreMedia(storageErr);
     }
   }
 
