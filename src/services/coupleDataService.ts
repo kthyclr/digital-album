@@ -334,11 +334,12 @@ export async function uploadAndCreateMemory(
     )
   ).slice(0, 10);
 
-  // CRITICAL: When using inline Firestore preview fallback (uploadedStoragePath === ''),
-  // do NOT duplicate the base64 string in both mediaUrl and thumbnailUrl, or the
-  // document will exceed Firestore's 1MB total document limit!
-  const storedThumbnailUrl =
-    uploadedStoragePath && thumbnailUrl ? thumbnailUrl.slice(0, 350000) : '';
+  // When uploaded to Supabase Storage, use the fast public CDN URL directly and avoid bloating Firestore with a 350KB base64 thumbnail
+  const storedThumbnailUrl = uploadedStoragePath.startsWith('supabase:')
+    ? ''
+    : uploadedStoragePath && thumbnailUrl
+    ? thumbnailUrl.slice(0, 350000)
+    : '';
 
   const memoryRecord = {
     title: params.title.trim().slice(0, 160),
@@ -390,6 +391,160 @@ export async function uploadAndCreateMemory(
     }
     handleFirestoreError(firestoreErr, OperationType.CREATE, docPath);
   }
+}
+
+/**
+ * Automatically reconciles any files stored in Supabase Storage (`digital-album`)
+ * under `couples/kathy-austin-space/memories/{memoryId}/{timestamp}_{filename}`
+ * that do not yet have a corresponding Firestore memory document, or repairs broken URLs.
+ */
+export async function syncOrphanedSupabaseMemories(
+  existingMemories: MemoryItem[]
+): Promise<number> {
+  const user = auth.currentUser;
+  if (!user || !isSupabaseStorageConfigured() || !supabase) return 0;
+
+  const existingById = new Map<string, MemoryItem>();
+  for (const m of existingMemories) {
+    existingById.set(m.id, m);
+  }
+
+  const baseFolder = `couples/${COUPLE_SPACE_ID}/memories`;
+  const { data: folders, error: listErr } = await supabase.storage
+    .from(supabaseBucket)
+    .list(baseFolder, { limit: 200 });
+
+  if (listErr || !folders || folders.length === 0) return 0;
+
+  const partnerProfile =
+    PARTNER_PROFILES[(user.email || '').toLowerCase()] || {
+      name: user.displayName || 'Kathy',
+    };
+
+  let syncedCount = 0;
+
+  for (const folder of folders) {
+    if (!folder.name || folder.name.startsWith('.')) continue;
+    const memoryId = folder.name;
+    const existingMem = existingById.get(memoryId);
+
+    // If memory already exists in Firestore and has a valid https URL, check if its bucket URL needs updating
+    if (
+      existingMem &&
+      existingMem.mediaUrl &&
+      existingMem.mediaUrl.includes(`/storage/v1/object/public/${supabaseBucket}/`)
+    ) {
+      continue;
+    }
+
+    const folderPath = `${baseFolder}/${memoryId}`;
+    const { data: files, error: fErr } = await supabase.storage
+      .from(supabaseBucket)
+      .list(folderPath, { limit: 5 });
+
+    if (fErr || !files || files.length === 0) continue;
+    const fileObj = files.find((f) => f.name && !f.name.startsWith('.'));
+    if (!fileObj) continue;
+
+    const fullObjectPath = `${folderPath}/${fileObj.name}`;
+    const { data: pubData } = supabase.storage
+      .from(supabaseBucket)
+      .getPublicUrl(fullObjectPath);
+
+    const publicUrl = pubData.publicUrl;
+    if (!publicUrl) continue;
+
+    // If the Firestore document exists but had a stale/broken URL, update it
+    if (existingMem) {
+      const memRef = doc(db, 'couples', COUPLE_SPACE_ID, 'memories', memoryId);
+      try {
+        await updateDoc(memRef, {
+          storagePath: `supabase:${fullObjectPath}`.slice(0, 500),
+          mediaUrl: publicUrl.slice(0, 750000),
+          updatedAt: serverTimestamp(),
+        });
+        syncedCount++;
+      } catch (e) {
+        console.warn('Could not update existing memory URL:', e);
+      }
+      continue;
+    }
+
+    // Parse timestamp and original filename from `{timestamp}_{filename}`
+    const match = fileObj.name.match(/^(\d{10,15})_(.+)$/);
+    const timestampMs = match ? parseInt(match[1], 10) : Date.now();
+    const rawFileName = match ? match[2] : fileObj.name;
+    const cleanTitle = rawFileName.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ');
+
+    const captureDate = new Date(
+      !isNaN(timestampMs) && timestampMs > 946684800000 ? timestampMs : Date.now()
+    );
+    const y = captureDate.getFullYear();
+    const m = captureDate.getMonth() + 1;
+    const d = captureDate.getDate();
+    const memoryDate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+    const mime =
+      (fileObj.metadata && typeof fileObj.metadata.mimetype === 'string'
+        ? fileObj.metadata.mimetype
+        : '') ||
+      (/\.(mp4|webm|mov)$/i.test(rawFileName)
+        ? 'video/mp4'
+        : /\.(mp3|wav|m4a|aac|ogg)$/i.test(rawFileName)
+        ? 'audio/mpeg'
+        : 'image/jpeg');
+
+    const mediaType: MediaType = mime.startsWith('video/')
+      ? 'video'
+      : mime.startsWith('audio/')
+      ? 'audio'
+      : 'photo';
+
+    const sizeBytes =
+      fileObj.metadata && typeof fileObj.metadata.size === 'number'
+        ? fileObj.metadata.size
+        : 0;
+
+    const memRef = doc(db, 'couples', COUPLE_SPACE_ID, 'memories', memoryId);
+    try {
+      await setDoc(memRef, {
+        title: cleanTitle.slice(0, 160) || 'Recovered Memory',
+        caption: '',
+        memoryDate,
+        memoryYear: y,
+        memoryMonth: m,
+        dateSource: 'file-modified' as DateSource,
+        mediaType,
+        storagePath: `supabase:${fullObjectPath}`.slice(0, 500),
+        mediaUrl: publicUrl.slice(0, 750000),
+        thumbnailUrl: '',
+        originalFileName: rawFileName.slice(0, 255),
+        contentType: mime.slice(0, 100),
+        sizeBytes,
+        locationText: '',
+        altText: (cleanTitle || rawFileName).slice(0, 300),
+        tags: [],
+        albumIds: [],
+        favoritedBy: [],
+        isLingKong: false,
+        lingKongLabel: '',
+        isSoundtrack: mediaType === 'audio',
+        externalSongUrl: '',
+        soundtrackNotes: '',
+        status: 'active',
+        trashedAt: '',
+        createdBy: user.uid,
+        creatorName: partnerProfile.name.slice(0, 80),
+        uploadedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      syncedCount++;
+    } catch (err) {
+      console.warn('Failed to sync orphaned Supabase file:', memoryId, err);
+    }
+  }
+
+  return syncedCount;
 }
 
 /**

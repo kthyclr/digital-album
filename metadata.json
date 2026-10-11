@@ -1,6 +1,10 @@
 {
   "name": "Moly & Love: Kathy & Austin's Digital Memory Album",
   "description": "A private, warm editorial digital memory album and shared universe for Kathy & Austin (Moly & Love · Ling & Kong).",
-  "requestFramePermissions": ["microphone"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

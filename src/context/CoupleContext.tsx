@@ -42,7 +42,10 @@ import {
   MemberRecord,
   ToastMessage,
 } from '../types/models';
-import { bootstrapAuthorizedCoupleMember } from '../services/coupleDataService';
+import {
+  bootstrapAuthorizedCoupleMember,
+  syncOrphanedSupabaseMemories,
+} from '../services/coupleDataService';
 
 interface CoupleContextValue {
   user: User | null;
@@ -68,6 +71,7 @@ interface CoupleContextValue {
   dismissToast: (id: string) => void;
   signInWithGoogle: () => Promise<void>;
   signOutUser: () => Promise<void>;
+  syncSupabaseStorage: () => Promise<void>;
 }
 
 const CoupleContext = createContext<CoupleContextValue | undefined>(undefined);
@@ -254,6 +258,7 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
     );
 
     // 4. Memories Subcollection Listener (bounded to 250 items for performance)
+    let didInitialSupabaseSync = false;
     const memoriesPath = `couples/${COUPLE_SPACE_ID}/memories`;
     const memoriesQuery = query(
       collection(db, 'couples', COUPLE_SPACE_ID, 'memories'),
@@ -269,6 +274,22 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
         }));
         setMemories(list);
         setDataLoading(false);
+
+        if (!didInitialSupabaseSync) {
+          didInitialSupabaseSync = true;
+          syncOrphanedSupabaseMemories(list)
+            .then((count) => {
+              if (count > 0) {
+                addToast(
+                  `Synced ${count} ${count === 1 ? 'memory' : 'memories'} from Supabase Storage`,
+                  'success'
+                );
+              }
+            })
+            .catch((err) => {
+              console.warn('Auto Supabase sync skipped:', err);
+            });
+        }
       },
       (err) => {
         setDataLoading(false);
@@ -369,7 +390,7 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
       unsubLetters();
       unsubBucket();
     };
-  }, [user, isAuthorizedMember, permissionReady]);
+  }, [user, isAuthorizedMember, permissionReady, addToast]);
 
   const signInWithGoogle = async () => {
     try {
@@ -390,6 +411,27 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
       addToast('Sign-out failed', 'error', msg);
     }
   };
+
+  const syncSupabaseStorage = useCallback(async () => {
+    try {
+      const count = await syncOrphanedSupabaseMemories(memories);
+      if (count > 0) {
+        addToast(
+          `Synced ${count} ${count === 1 ? 'memory' : 'memories'} from Supabase Storage`,
+          'success'
+        );
+      } else {
+        addToast(
+          'All Supabase Storage files are already synced and up to date',
+          'info'
+        );
+      }
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : 'Could not sync Supabase files.';
+      addToast('Supabase sync error', 'error', msg);
+    }
+  }, [memories, addToast]);
 
   return (
     <CoupleContext.Provider
@@ -413,6 +455,7 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
         dismissToast,
         signInWithGoogle,
         signOutUser,
+        syncSupabaseStorage,
       }}
     >
       {children}

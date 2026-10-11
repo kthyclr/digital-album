@@ -9,6 +9,7 @@ import {
   Trash2,
   X,
   Edit3,
+  RefreshCw,
 } from 'lucide-react';
 import { useCouple } from '../context/CoupleContext';
 import { MemoryItem, MediaType, CustomAlbum } from '../types/models';
@@ -39,8 +40,16 @@ export const MemoriesSection: React.FC<{
   onOpenMemory: (mem: MemoryItem) => void;
   onOpenSlideshow: (mems: MemoryItem[]) => void;
 }> = ({ onOpenUpload, onOpenMemory, onOpenSlideshow }) => {
-  const { user, memories, albums, userPrefs, coupleConfig, addToast } =
-    useCouple();
+  const {
+    user,
+    memories,
+    albums,
+    userPrefs,
+    coupleConfig,
+    addToast,
+    syncSupabaseStorage,
+  } = useCouple();
+  const [syncingStorage, setSyncingStorage] = useState(false);
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(
     userPrefs.defaultViewMode || 'grid'
@@ -318,6 +327,26 @@ export const MemoriesSection: React.FC<{
         }
         actions={
           <>
+            <button
+              type="button"
+              disabled={syncingStorage}
+              onClick={async () => {
+                setSyncingStorage(true);
+                try {
+                  await syncSupabaseStorage();
+                } finally {
+                  setSyncingStorage(false);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--bg-powder-blue)] transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              title="Sync any photos, videos, or audio files in your Supabase digital-album bucket"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${syncingStorage ? 'animate-spin' : ''}`}
+              />
+              {syncingStorage ? 'Syncing...' : 'Sync Supabase'}
+            </button>
+
             <button
               type="button"
               onClick={() => handleOpenAlbumModal()}
