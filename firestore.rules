@@ -290,35 +290,32 @@ service cloud.firestore {
 
       // Memories Subcollection
       match /memories/{memoryId} {
-        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memoryId) && isCoupleMemberDocExists(coupleId);
+        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memoryId);
         allow list: if isCoupleSpace(coupleId) && (existing().status == 'active' || existing().status == 'trashed');
         allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memoryId) &&
           isValidMemory(incoming()) &&
           incoming().createdBy == request.auth.uid &&
           incoming().uploadedAt == request.time &&
-          incoming().updatedAt == request.time &&
-          isCoupleMemberDocExists(coupleId);
+          incoming().updatedAt == request.time;
         allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memoryId) &&
           isValidMemory(incoming()) &&
           incoming().createdBy == existing().createdBy &&
           incoming().uploadedAt == existing().uploadedAt &&
-          incoming().storagePath == existing().storagePath &&
           incoming().originalFileName == existing().originalFileName &&
           incoming().contentType == existing().contentType &&
           incoming().sizeBytes == existing().sizeBytes &&
           incoming().mediaType == existing().mediaType &&
-          incoming().updatedAt == request.time &&
-          isCoupleMemberDocExists(coupleId) && (
-            // Action 1: Metadata & Organization Update
+          incoming().updatedAt == request.time && (
+            // Action 1: Metadata, Organization & Storage URL Repair Update
             incoming().diff(existing()).affectedKeys().hasOnly([
               'title', 'caption', 'memoryDate', 'memoryYear', 'memoryMonth', 'dateSource',
+              'storagePath', 'mediaUrl', 'thumbnailUrl',
               'locationText', 'altText', 'tags', 'albumIds', 'favoritedBy',
               'isLingKong', 'lingKongLabel', 'isSoundtrack', 'externalSongUrl',
               'soundtrackNotes', 'status', 'trashedAt', 'updatedAt'
             ])
           );
-        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memoryId) &&
-          isCoupleMemberDocExists(coupleId);
+        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memoryId);
       }
 
       // Custom Albums Subcollection

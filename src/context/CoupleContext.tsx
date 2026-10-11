@@ -277,7 +277,20 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (!didInitialSupabaseSync) {
           didInitialSupabaseSync = true;
-          syncOrphanedSupabaseMemories(list)
+          syncOrphanedSupabaseMemories(list, (recoveredItems) => {
+            if (recoveredItems.length > 0) {
+              setMemories((prev) => {
+                const existingIds = new Set(prev.map((m) => m.id));
+                const merged = [
+                  ...prev,
+                  ...recoveredItems.filter((r) => !existingIds.has(r.id)),
+                ];
+                return merged.sort((a, b) =>
+                  b.memoryDate.localeCompare(a.memoryDate)
+                );
+              });
+            }
+          })
             .then((count) => {
               if (count > 0) {
                 addToast(
@@ -293,6 +306,12 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
       },
       (err) => {
         setDataLoading(false);
+        // Even if Firestore query errors on external deploy, still load memories directly from Supabase Storage
+        syncOrphanedSupabaseMemories([], (recoveredItems) => {
+          if (recoveredItems.length > 0) {
+            setMemories(recoveredItems);
+          }
+        }).catch(() => {});
         handleFirestoreError(err, OperationType.LIST, memoriesPath);
       }
     );
@@ -414,7 +433,23 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const syncSupabaseStorage = useCallback(async () => {
     try {
-      const count = await syncOrphanedSupabaseMemories(memories);
+      const count = await syncOrphanedSupabaseMemories(
+        memories,
+        (recoveredItems) => {
+          if (recoveredItems.length > 0) {
+            setMemories((prev) => {
+              const existingIds = new Set(prev.map((m) => m.id));
+              const merged = [
+                ...prev,
+                ...recoveredItems.filter((r) => !existingIds.has(r.id)),
+              ];
+              return merged.sort((a, b) =>
+                b.memoryDate.localeCompare(a.memoryDate)
+              );
+            });
+          }
+        }
+      );
       if (count > 0) {
         addToast(
           `Synced ${count} ${count === 1 ? 'memory' : 'memories'} from Supabase Storage`,

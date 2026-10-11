@@ -399,7 +399,8 @@ export async function uploadAndCreateMemory(
  * that do not yet have a corresponding Firestore memory document, or repairs broken URLs.
  */
 export async function syncOrphanedSupabaseMemories(
-  existingMemories: MemoryItem[]
+  existingMemories: MemoryItem[],
+  onRecovered?: (items: MemoryItem[]) => void
 ): Promise<number> {
   const user = auth.currentUser;
   if (!user || !isSupabaseStorageConfigured() || !supabase) return 0;
@@ -422,6 +423,7 @@ export async function syncOrphanedSupabaseMemories(
     };
 
   let syncedCount = 0;
+  const recoveredForUi: MemoryItem[] = [];
 
   for (const folder of folders) {
     if (!folder.name || folder.name.startsWith('.')) continue;
@@ -505,43 +507,82 @@ export async function syncOrphanedSupabaseMemories(
         ? fileObj.metadata.size
         : 0;
 
+    const uiItem: MemoryItem = {
+      id: memoryId,
+      title: cleanTitle.slice(0, 160) || 'Recovered Memory',
+      caption: '',
+      memoryDate,
+      memoryYear: y,
+      memoryMonth: m,
+      dateSource: 'file-modified' as DateSource,
+      mediaType,
+      storagePath: `supabase:${fullObjectPath}`.slice(0, 500),
+      mediaUrl: publicUrl.slice(0, 750000),
+      thumbnailUrl: '',
+      originalFileName: rawFileName.slice(0, 255),
+      contentType: mime.slice(0, 100),
+      sizeBytes,
+      locationText: '',
+      altText: (cleanTitle || rawFileName).slice(0, 300),
+      tags: [],
+      albumIds: [],
+      favoritedBy: [],
+      isLingKong: false,
+      lingKongLabel: '',
+      isSoundtrack: mediaType === 'audio',
+      externalSongUrl: '',
+      soundtrackNotes: '',
+      status: 'active',
+      trashedAt: '',
+      createdBy: user.uid,
+      creatorName: partnerProfile.name.slice(0, 80),
+      uploadedAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+
+    recoveredForUi.push(uiItem);
+
     const memRef = doc(db, 'couples', COUPLE_SPACE_ID, 'memories', memoryId);
     try {
       await setDoc(memRef, {
-        title: cleanTitle.slice(0, 160) || 'Recovered Memory',
-        caption: '',
-        memoryDate,
-        memoryYear: y,
-        memoryMonth: m,
-        dateSource: 'file-modified' as DateSource,
-        mediaType,
-        storagePath: `supabase:${fullObjectPath}`.slice(0, 500),
-        mediaUrl: publicUrl.slice(0, 750000),
-        thumbnailUrl: '',
-        originalFileName: rawFileName.slice(0, 255),
-        contentType: mime.slice(0, 100),
-        sizeBytes,
-        locationText: '',
-        altText: (cleanTitle || rawFileName).slice(0, 300),
-        tags: [],
-        albumIds: [],
-        favoritedBy: [],
-        isLingKong: false,
-        lingKongLabel: '',
-        isSoundtrack: mediaType === 'audio',
-        externalSongUrl: '',
-        soundtrackNotes: '',
-        status: 'active',
-        trashedAt: '',
-        createdBy: user.uid,
-        creatorName: partnerProfile.name.slice(0, 80),
+        title: uiItem.title,
+        caption: uiItem.caption,
+        memoryDate: uiItem.memoryDate,
+        memoryYear: uiItem.memoryYear,
+        memoryMonth: uiItem.memoryMonth,
+        dateSource: uiItem.dateSource,
+        mediaType: uiItem.mediaType,
+        storagePath: uiItem.storagePath,
+        mediaUrl: uiItem.mediaUrl,
+        thumbnailUrl: uiItem.thumbnailUrl,
+        originalFileName: uiItem.originalFileName,
+        contentType: uiItem.contentType,
+        sizeBytes: uiItem.sizeBytes,
+        locationText: uiItem.locationText,
+        altText: uiItem.altText,
+        tags: uiItem.tags,
+        albumIds: uiItem.albumIds,
+        favoritedBy: uiItem.favoritedBy,
+        isLingKong: uiItem.isLingKong,
+        lingKongLabel: uiItem.lingKongLabel,
+        isSoundtrack: uiItem.isSoundtrack,
+        externalSongUrl: uiItem.externalSongUrl,
+        soundtrackNotes: uiItem.soundtrackNotes,
+        status: uiItem.status,
+        trashedAt: uiItem.trashedAt,
+        createdBy: uiItem.createdBy,
+        creatorName: uiItem.creatorName,
         uploadedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
       syncedCount++;
     } catch (err) {
-      console.warn('Failed to sync orphaned Supabase file:', memoryId, err);
+      console.warn('Failed to sync orphaned Supabase file to Firestore:', memoryId, err);
     }
+  }
+
+  if (onRecovered && recoveredForUi.length > 0) {
+    onRecovered(recoveredForUi);
   }
 
   return syncedCount;
