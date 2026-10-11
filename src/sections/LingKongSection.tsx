@@ -14,10 +14,23 @@ export const LingKongSection: React.FC<{
   onOpenUploadLingKong: () => void;
   onOpenMemory: (mem: MemoryItem) => void;
 }> = ({ onOpenUploadLingKong, onOpenMemory }) => {
-  const { user, coupleConfig, memories } = useCouple();
+  const { user, coupleConfig, memories, patchLocalMemory } = useCouple();
   const [selectedLabel, setSelectedLabel] = useState<string>('all');
 
   if (!user) return null;
+
+  const handleToggleFav = async (m: MemoryItem) => {
+    const isFav = m.favoritedBy.includes(user.uid);
+    const nextFavs = isFav
+      ? m.favoritedBy.filter((id) => id !== user.uid)
+      : [...m.favoritedBy, user.uid].slice(0, 5);
+    patchLocalMemory(m.id, { favoritedBy: nextFavs });
+    try {
+      await toggleMemoryFavorite(m, user.uid);
+    } catch {
+      patchLocalMemory(m.id, { favoritedBy: m.favoritedBy });
+    }
+  };
 
   const lingKongMemories = useMemo(
     () =>
@@ -123,7 +136,7 @@ export const LingKongSection: React.FC<{
                 memory={mem}
                 currentUserId={user.uid}
                 onOpen={onOpenMemory}
-                onToggleFavorite={(m) => toggleMemoryFavorite(m, user.uid)}
+                onToggleFavorite={handleToggleFav}
               />
             </div>
           ))}

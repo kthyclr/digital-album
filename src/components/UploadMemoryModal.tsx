@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Upload,
   X,
@@ -54,7 +54,7 @@ export const UploadMemoryModal: React.FC<{
   defaultIsLingKong = false,
   defaultIsSoundtrack = false,
 }) => {
-  const { coupleConfig, albums, addToast } = useCouple();
+  const { coupleConfig, albums, addToast, upsertLocalMemory } = useCouple();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [queue, setQueue] = useState<QueuedUploadItem[]>([]);
@@ -70,6 +70,14 @@ export const UploadMemoryModal: React.FC<{
   const [isFavorite, setIsFavorite] = useState(false);
   const [isUploadingBatch, setIsUploadingBatch] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setSelectedAlbumId(defaultAlbumId);
+      setIsLingKong(defaultIsLingKong);
+      setIsSoundtrack(defaultIsSoundtrack);
+    }
+  }, [open, defaultAlbumId, defaultIsLingKong, defaultIsSoundtrack]);
 
   if (!open) return null;
 
@@ -172,7 +180,7 @@ export const UploadMemoryModal: React.FC<{
     });
 
     try {
-      await uploadAndCreateMemory({
+      const createdMemory = await uploadAndCreateMemory({
         file: item.file,
         mediaType: item.mediaType,
         title: item.title || item.file.name,
@@ -196,6 +204,8 @@ export const UploadMemoryModal: React.FC<{
           updateQueueItem(item.id, { uploadTask: task });
         },
       });
+
+      upsertLocalMemory(createdMemory);
 
       updateQueueItem(item.id, {
         status: 'completed',

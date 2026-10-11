@@ -4,6 +4,9 @@ import {
   Film,
   Mic,
   Heart,
+  Star,
+  Trash2,
+  RotateCcw,
   Sparkles,
   Music,
   X,
@@ -247,17 +250,29 @@ export const EmptyStatePanel: React.FC<{
 export const MemoryCard: React.FC<{
   memory: MemoryItem;
   currentUserId: string;
+  featuredMemoryId?: string;
   viewMode?: 'grid' | 'list';
   onOpen: (memory: MemoryItem) => void;
   onToggleFavorite: (memory: MemoryItem) => void;
+  onToggleFeatured?: (memory: MemoryItem) => void;
+  onTrashOrRestore?: (memory: MemoryItem) => void;
+  onPermanentDelete?: (memory: MemoryItem) => void;
 }> = ({
   memory,
   currentUserId,
+  featuredMemoryId,
   viewMode = 'grid',
   onOpen,
   onToggleFavorite,
+  onToggleFeatured,
+  onTrashOrRestore,
+  onPermanentDelete,
 }) => {
   const isFav = memory.favoritedBy.includes(currentUserId);
+  const isFeatured = Boolean(
+    featuredMemoryId && featuredMemoryId === memory.id
+  );
+  const isTrashed = memory.status === 'trashed';
   const displayUrl = memory.thumbnailUrl || memory.mediaUrl;
 
   const mediaIcon =
@@ -334,21 +349,95 @@ export const MemoryCard: React.FC<{
           </div>
         </button>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleFavorite(memory);
-          }}
-          aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
-          className="p-2.5 rounded-2xl border-2 border-[var(--ink)] bg-[var(--paper-pink)] text-[var(--ink)] hover:bg-[var(--accent)] hover:text-white transition-transform duration-150 active:scale-95 cursor-pointer shrink-0"
-        >
-          <Heart
-            className={`w-4 h-4 ${
-              isFav ? 'fill-[var(--accent)] text-[var(--accent)]' : ''
-            }`}
-          />
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {!isTrashed && onToggleFeatured && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFeatured(memory);
+              }}
+              aria-label={
+                isFeatured
+                  ? 'Clear Featured Memory on Home'
+                  : 'Set as Featured Memory on Home'
+              }
+              title={
+                isFeatured
+                  ? 'Clear Featured Memory on Home'
+                  : 'Set as Featured Memory on Home'
+              }
+              className={`p-2.5 rounded-2xl border-2 border-[var(--ink)] transition-transform duration-150 active:scale-95 cursor-pointer ${
+                isFeatured
+                  ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-500'
+                  : 'bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-amber-50 hover:text-amber-500'
+              }`}
+            >
+              <Star
+                className={`w-4 h-4 ${
+                  isFeatured ? 'fill-amber-400 text-amber-500' : ''
+                }`}
+              />
+            </button>
+          )}
+
+          {!isTrashed && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite(memory);
+              }}
+              aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+              title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+              className={`p-2.5 rounded-2xl border-2 border-[var(--ink)] transition-transform duration-150 active:scale-95 cursor-pointer ${
+                isFav
+                  ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-600'
+                  : 'bg-[var(--paper-pink)] text-[var(--ink)] hover:bg-rose-100 hover:text-rose-600'
+              }`}
+            >
+              <Heart
+                className={`w-4 h-4 ${
+                  isFav ? 'fill-rose-600 text-rose-600' : ''
+                }`}
+              />
+            </button>
+          )}
+
+          {onTrashOrRestore && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onTrashOrRestore(memory);
+              }}
+              aria-label={isTrashed ? 'Restore from Trash' : 'Move to Trash'}
+              title={isTrashed ? 'Restore from Trash' : 'Move to Trash'}
+              className="p-2.5 rounded-2xl border-2 border-[var(--ink)] bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-rose-50 hover:text-rose-600 transition-transform duration-150 active:scale-95 cursor-pointer"
+            >
+              {isTrashed ? (
+                <RotateCcw className="w-4 h-4" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
+          {isTrashed && onPermanentDelete && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPermanentDelete(memory);
+              }}
+              aria-label="Delete Permanently"
+              title="Delete Permanently"
+              className="p-2.5 rounded-2xl border-2 border-rose-600 bg-rose-600 text-white hover:bg-rose-700 transition-transform duration-150 active:scale-95 cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -390,21 +479,96 @@ export const MemoryCard: React.FC<{
           )}
         </button>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleFavorite(memory);
-          }}
-          aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
-          className="absolute top-3 right-3 p-2 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--paper-pink)] transition-transform duration-150 active:scale-95 cursor-pointer"
-        >
-          <Heart
-            className={`w-4 h-4 ${
-              isFav ? 'fill-[var(--accent)] text-[var(--accent)]' : ''
-            }`}
-          />
-        </button>
+        {/* Top-right action badges */}
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+          {!isTrashed && onToggleFeatured && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFeatured(memory);
+              }}
+              aria-label={
+                isFeatured
+                  ? 'Clear Featured Memory on Home'
+                  : 'Set as Featured Memory on Home'
+              }
+              title={
+                isFeatured
+                  ? 'Clear Featured Memory on Home'
+                  : 'Set as Featured Memory on Home'
+              }
+              className={`p-2 rounded-2xl border-2 border-[var(--ink)] transition-transform duration-150 active:scale-95 cursor-pointer ${
+                isFeatured
+                  ? 'bg-amber-100 dark:bg-amber-950/90 text-amber-500'
+                  : 'bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-amber-50 hover:text-amber-500'
+              }`}
+            >
+              <Star
+                className={`w-4 h-4 ${
+                  isFeatured ? 'fill-amber-400 text-amber-500' : ''
+                }`}
+              />
+            </button>
+          )}
+
+          {!isTrashed && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite(memory);
+              }}
+              aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+              title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+              className={`p-2 rounded-2xl border-2 border-[var(--ink)] transition-transform duration-150 active:scale-95 cursor-pointer ${
+                isFav
+                  ? 'bg-rose-100 dark:bg-rose-950/90 text-rose-600'
+                  : 'bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-[var(--paper-pink)] hover:text-rose-600'
+              }`}
+            >
+              <Heart
+                className={`w-4 h-4 ${
+                  isFav ? 'fill-rose-600 text-rose-600' : ''
+                }`}
+              />
+            </button>
+          )}
+
+          {onTrashOrRestore && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onTrashOrRestore(memory);
+              }}
+              aria-label={isTrashed ? 'Restore from Trash' : 'Move to Trash'}
+              title={isTrashed ? 'Restore from Trash' : 'Move to Trash'}
+              className="p-2 rounded-2xl border-2 border-[var(--ink)] bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-rose-50 hover:text-rose-600 transition-transform duration-150 active:scale-95 cursor-pointer"
+            >
+              {isTrashed ? (
+                <RotateCcw className="w-4 h-4" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
+          {isTrashed && onPermanentDelete && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPermanentDelete(memory);
+              }}
+              aria-label="Delete Permanently"
+              title="Delete Permanently"
+              className="p-2 rounded-2xl border-2 border-rose-600 bg-rose-600 text-white hover:bg-rose-700 transition-transform duration-150 active:scale-95 cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="p-5 flex-1 flex flex-col justify-between space-y-2.5">

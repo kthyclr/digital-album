@@ -320,66 +320,58 @@ service cloud.firestore {
 
       // Custom Albums Subcollection
       match /albums/{albumId} {
-        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(albumId) && isCoupleMemberDocExists(coupleId);
+        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(albumId);
         allow list: if isCoupleSpace(coupleId) && existing().sortOrder >= 0;
         allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(albumId) &&
           isValidAlbum(incoming()) &&
           incoming().createdBy == request.auth.uid &&
           incoming().createdAt == request.time &&
-          incoming().updatedAt == request.time &&
-          isCoupleMemberDocExists(coupleId);
+          incoming().updatedAt == request.time;
         allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(albumId) &&
           isValidAlbum(incoming()) &&
           incoming().createdBy == existing().createdBy &&
           incoming().createdAt == existing().createdAt &&
           incoming().updatedAt == request.time &&
-          isCoupleMemberDocExists(coupleId) &&
           incoming().diff(existing()).affectedKeys().hasOnly([
             'title', 'description', 'coverMemoryId', 'sortOrder', 'updatedAt'
           ]);
-        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(albumId) &&
-          isCoupleMemberDocExists(coupleId);
+        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(albumId);
       }
 
       // Our Story Milestones Subcollection
       match /milestones/{milestoneId} {
-        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(milestoneId) && isCoupleMemberDocExists(coupleId);
+        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(milestoneId);
         allow list: if isCoupleSpace(coupleId) && existing().eventDate.size() >= 8;
         allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(milestoneId) &&
           isValidMilestone(incoming()) &&
           incoming().createdBy == request.auth.uid &&
           incoming().createdAt == request.time &&
-          incoming().updatedAt == request.time &&
-          isCoupleMemberDocExists(coupleId);
+          incoming().updatedAt == request.time;
         allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(milestoneId) &&
           isValidMilestone(incoming()) &&
           incoming().createdBy == existing().createdBy &&
           incoming().createdAt == existing().createdAt &&
           incoming().updatedAt == request.time &&
-          isCoupleMemberDocExists(coupleId) &&
           incoming().diff(existing()).affectedKeys().hasOnly([
             'title', 'description', 'eventDate', 'category', 'memoryIds', 'updatedAt'
           ]);
-        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(milestoneId) &&
-          isCoupleMemberDocExists(coupleId);
+        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(milestoneId);
       }
 
       // Time Capsule Letter Envelopes Subcollection
       match /letters/{letterId} {
-        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) && isCoupleMemberDocExists(coupleId);
+        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId);
         allow list: if isCoupleSpace(coupleId) && existing().title.size() >= 1;
         allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
           isValidLetter(incoming()) &&
           incoming().createdBy == request.auth.uid &&
           incoming().createdAt == request.time &&
-          incoming().updatedAt == request.time &&
-          isCoupleMemberDocExists(coupleId);
+          incoming().updatedAt == request.time;
         allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
           isValidLetter(incoming()) &&
           incoming().createdBy == existing().createdBy &&
           incoming().createdAt == existing().createdAt &&
-          incoming().updatedAt == request.time &&
-          isCoupleMemberDocExists(coupleId) && (
+          incoming().updatedAt == request.time && (
             // Action 1: Pre-unlock envelope edit by creator only
             (existing().createdBy == request.auth.uid &&
              request.time < existing().unlockAt &&
@@ -396,23 +388,20 @@ service cloud.firestore {
           );
         allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
           existing().createdBy == request.auth.uid &&
-          request.time < existing().unlockAt &&
-          isCoupleMemberDocExists(coupleId);
+          request.time < existing().unlockAt;
 
         // Protected Time Capsule Letter Body (Server-Authoritative Lock!)
         match /secrets/{secretId} {
           // CRITICAL: Letter body CANNOT be read before request.time >= existing().unlockAt!
           allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
             secretId == 'body' &&
-            request.time >= existing().unlockAt &&
-            isCoupleMemberDocExists(coupleId);
+            request.time >= existing().unlockAt;
           allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
             secretId == 'body' &&
             isValidLetterSecret(incoming()) &&
             incoming().createdBy == request.auth.uid &&
             incoming().createdAt == request.time &&
-            incoming().updatedAt == request.time &&
-            isCoupleMemberDocExists(coupleId);
+            incoming().updatedAt == request.time;
           allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
             secretId == 'body' &&
             isValidLetterSecret(incoming()) &&
@@ -421,38 +410,33 @@ service cloud.firestore {
             incoming().createdBy == existing().createdBy &&
             incoming().createdAt == existing().createdAt &&
             incoming().updatedAt == request.time &&
-            isCoupleMemberDocExists(coupleId) &&
             incoming().diff(existing()).affectedKeys().hasOnly(['body', 'unlockAt', 'updatedAt']);
           allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
             secretId == 'body' &&
             existing().createdBy == request.auth.uid &&
-            request.time < existing().unlockAt &&
-            isCoupleMemberDocExists(coupleId);
+            request.time < existing().unlockAt;
         }
       }
 
       // Shared Bucket List Subcollection
       match /bucketItems/{itemId} {
-        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(itemId) && isCoupleMemberDocExists(coupleId);
+        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(itemId);
         allow list: if isCoupleSpace(coupleId) && existing().title.size() >= 1;
         allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(itemId) &&
           isValidBucketItem(incoming()) &&
           incoming().createdBy == request.auth.uid &&
           incoming().createdAt == request.time &&
-          incoming().updatedAt == request.time &&
-          isCoupleMemberDocExists(coupleId);
+          incoming().updatedAt == request.time;
         allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(itemId) &&
           isValidBucketItem(incoming()) &&
           incoming().createdBy == existing().createdBy &&
           incoming().createdAt == existing().createdAt &&
           incoming().updatedAt == request.time &&
-          isCoupleMemberDocExists(coupleId) &&
           incoming().diff(existing()).affectedKeys().hasOnly([
             'title', 'description', 'category', 'status', 'priority',
             'targetDate', 'linkedMemoryIds', 'completedAt', 'updatedAt'
           ]);
-        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(itemId) &&
-          isCoupleMemberDocExists(coupleId);
+        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(itemId);
       }
     }
 

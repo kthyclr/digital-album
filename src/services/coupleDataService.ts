@@ -153,7 +153,23 @@ export async function updateCoupleConfiguration(
 
   try {
     await updateDoc(coupleDocRef, merged);
-  } catch (err) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (
+      msg.includes('No document to update') ||
+      msg.includes('not-found') ||
+      msg.includes('NOT_FOUND')
+    ) {
+      try {
+        await setDoc(coupleDocRef, {
+          ...merged,
+          createdAt: serverTimestamp(),
+        });
+        return;
+      } catch (createErr) {
+        handleFirestoreError(createErr, OperationType.CREATE, couplePath);
+      }
+    }
     handleFirestoreError(err, OperationType.UPDATE, couplePath);
   }
 }
@@ -212,7 +228,7 @@ export interface UploadMemoryParams {
  */
 export async function uploadAndCreateMemory(
   params: UploadMemoryParams
-): Promise<string> {
+): Promise<MemoryItem> {
   const user = auth.currentUser;
   if (!user) throw new Error('You must be signed in to upload memories.');
 
@@ -292,8 +308,8 @@ export async function uploadAndCreateMemory(
     )
   ).slice(0, 10);
 
-  // 2. Save metadata record to Firebase Cloud Firestore
-  const memoryRecord = {
+  const uiItem: MemoryItem = {
+    id: memoryId,
     title: params.title.trim().slice(0, 160),
     caption: params.caption.trim().slice(0, 2000),
     memoryDate: params.memoryDate.trim().slice(0, 40),
@@ -317,10 +333,43 @@ export async function uploadAndCreateMemory(
     isSoundtrack: Boolean(params.isSoundtrack),
     externalSongUrl: params.externalSongUrl.trim().slice(0, 500),
     soundtrackNotes: params.soundtrackNotes.trim().slice(0, 1000),
-    status: 'active' as const,
+    status: 'active',
     trashedAt: '',
     createdBy: user.uid,
     creatorName: partnerProfile.name.slice(0, 80),
+    uploadedAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  };
+
+  // 2. Save metadata record to Firebase Cloud Firestore
+  const memoryRecord = {
+    title: uiItem.title,
+    caption: uiItem.caption,
+    memoryDate: uiItem.memoryDate,
+    memoryYear: uiItem.memoryYear,
+    memoryMonth: uiItem.memoryMonth,
+    dateSource: uiItem.dateSource,
+    mediaType: uiItem.mediaType,
+    storagePath: uiItem.storagePath,
+    mediaUrl: uiItem.mediaUrl,
+    thumbnailUrl: uiItem.thumbnailUrl,
+    originalFileName: uiItem.originalFileName,
+    contentType: uiItem.contentType,
+    sizeBytes: uiItem.sizeBytes,
+    locationText: uiItem.locationText,
+    altText: uiItem.altText,
+    tags: uiItem.tags,
+    albumIds: uiItem.albumIds,
+    favoritedBy: uiItem.favoritedBy,
+    isLingKong: uiItem.isLingKong,
+    lingKongLabel: uiItem.lingKongLabel,
+    isSoundtrack: uiItem.isSoundtrack,
+    externalSongUrl: uiItem.externalSongUrl,
+    soundtrackNotes: uiItem.soundtrackNotes,
+    status: uiItem.status,
+    trashedAt: uiItem.trashedAt,
+    createdBy: uiItem.createdBy,
+    creatorName: uiItem.creatorName,
     uploadedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -329,7 +378,7 @@ export async function uploadAndCreateMemory(
   try {
     await setDoc(newMemoryDocRef, memoryRecord);
     if (params.onProgress) params.onProgress(100);
-    return memoryId;
+    return uiItem;
   } catch (firestoreErr) {
     // Cleanup orphaned Supabase Storage file if Firestore metadata write failed
     const cleanPath = uploadedStoragePath.replace(/^supabase:/, '');
@@ -543,7 +592,7 @@ export async function createExternalSoundtrackMemory(params: {
   externalSongUrl: string;
   soundtrackNotes: string;
   tags: string[];
-}): Promise<string> {
+}): Promise<MemoryItem> {
   const user = auth.currentUser;
   if (!user) throw new Error('Not signed in');
 
@@ -558,40 +607,73 @@ export async function createExternalSoundtrackMemory(params: {
       name: user.displayName || 'Partner',
     };
 
+  const uiItem: MemoryItem = {
+    id: newMemoryDocRef.id,
+    title: params.title.trim().slice(0, 160),
+    caption: params.caption.trim().slice(0, 2000),
+    memoryDate: params.memoryDate.trim().slice(0, 40),
+    memoryYear,
+    memoryMonth,
+    dateSource: 'manual',
+    mediaType: 'audio',
+    storagePath: '',
+    mediaUrl: '',
+    thumbnailUrl: '',
+    originalFileName: 'external-song-link',
+    contentType: 'audio/mpeg',
+    sizeBytes: 0,
+    locationText: '',
+    altText: params.title.trim().slice(0, 300),
+    tags: params.tags.map((t) => t.trim().slice(0, 50)).filter(Boolean).slice(0, 15),
+    albumIds: [],
+    favoritedBy: [],
+    isLingKong: false,
+    lingKongLabel: '',
+    isSoundtrack: true,
+    externalSongUrl: params.externalSongUrl.trim().slice(0, 500),
+    soundtrackNotes: params.soundtrackNotes.trim().slice(0, 1000),
+    status: 'active',
+    trashedAt: '',
+    createdBy: user.uid,
+    creatorName: partnerProfile.name.slice(0, 80),
+    uploadedAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  };
+
   const docPath = `couples/${COUPLE_SPACE_ID}/memories/${newMemoryDocRef.id}`;
   try {
     await setDoc(newMemoryDocRef, {
-      title: params.title.trim().slice(0, 160),
-      caption: params.caption.trim().slice(0, 2000),
-      memoryDate: params.memoryDate.trim().slice(0, 40),
-      memoryYear,
-      memoryMonth,
-      dateSource: 'manual',
-      mediaType: 'audio',
-      storagePath: '',
-      mediaUrl: '',
-      thumbnailUrl: '',
-      originalFileName: 'external-song-link',
-      contentType: 'audio/mpeg',
-      sizeBytes: 0,
-      locationText: '',
-      altText: params.title.trim().slice(0, 300),
-      tags: params.tags.map((t) => t.trim().slice(0, 50)).filter(Boolean).slice(0, 15),
-      albumIds: [],
-      favoritedBy: [],
-      isLingKong: false,
-      lingKongLabel: '',
-      isSoundtrack: true,
-      externalSongUrl: params.externalSongUrl.trim().slice(0, 500),
-      soundtrackNotes: params.soundtrackNotes.trim().slice(0, 1000),
-      status: 'active',
-      trashedAt: '',
-      createdBy: user.uid,
-      creatorName: partnerProfile.name.slice(0, 80),
+      title: uiItem.title,
+      caption: uiItem.caption,
+      memoryDate: uiItem.memoryDate,
+      memoryYear: uiItem.memoryYear,
+      memoryMonth: uiItem.memoryMonth,
+      dateSource: uiItem.dateSource,
+      mediaType: uiItem.mediaType,
+      storagePath: uiItem.storagePath,
+      mediaUrl: uiItem.mediaUrl,
+      thumbnailUrl: uiItem.thumbnailUrl,
+      originalFileName: uiItem.originalFileName,
+      contentType: uiItem.contentType,
+      sizeBytes: uiItem.sizeBytes,
+      locationText: uiItem.locationText,
+      altText: uiItem.altText,
+      tags: uiItem.tags,
+      albumIds: uiItem.albumIds,
+      favoritedBy: uiItem.favoritedBy,
+      isLingKong: uiItem.isLingKong,
+      lingKongLabel: uiItem.lingKongLabel,
+      isSoundtrack: uiItem.isSoundtrack,
+      externalSongUrl: uiItem.externalSongUrl,
+      soundtrackNotes: uiItem.soundtrackNotes,
+      status: uiItem.status,
+      trashedAt: uiItem.trashedAt,
+      createdBy: uiItem.createdBy,
+      creatorName: uiItem.creatorName,
       uploadedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-    return newMemoryDocRef.id;
+    return uiItem;
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, docPath);
   }
@@ -621,49 +703,77 @@ export async function updateMemoryMetadata(
     trashedAt: string;
   }>
 ): Promise<void> {
+  const user = auth.currentUser;
   const docPath = `couples/${COUPLE_SPACE_ID}/memories/${memory.id}`;
   const docRef = doc(db, 'couples', COUPLE_SPACE_ID, 'memories', memory.id);
 
   const nextDate = (updates.memoryDate ?? memory.memoryDate).trim().slice(0, 40);
   const parts = nextDate.split('-').map((p) => parseInt(p, 10));
-  const memoryYear = parts[0] || memory.memoryYear;
-  const memoryMonth = parts[1] || memory.memoryMonth;
+  const memoryYear = parts[0] || memory.memoryYear || new Date().getFullYear();
+  const memoryMonth = parts[1] || memory.memoryMonth || new Date().getMonth() + 1;
 
-  const cleanTags = (updates.tags ?? memory.tags)
+  const cleanTags = (updates.tags ?? memory.tags ?? [])
     .map((t) => t.trim().slice(0, 50))
     .filter(Boolean)
     .slice(0, 15);
 
-  const cleanAlbums = (updates.albumIds ?? memory.albumIds)
+  const cleanAlbums = (updates.albumIds ?? memory.albumIds ?? [])
     .map((a) => a.trim().slice(0, 128))
     .filter(Boolean)
     .slice(0, 10);
 
   const payload = {
-    title: (updates.title ?? memory.title).trim().slice(0, 160),
-    caption: (updates.caption ?? memory.caption).trim().slice(0, 2000),
+    title: (updates.title ?? memory.title ?? '').trim().slice(0, 160),
+    caption: (updates.caption ?? memory.caption ?? '').trim().slice(0, 2000),
     memoryDate: nextDate,
     memoryYear,
     memoryMonth,
-    dateSource: updates.dateSource ?? memory.dateSource,
-    locationText: (updates.locationText ?? memory.locationText).trim().slice(0, 160),
-    altText: (updates.altText ?? memory.altText).trim().slice(0, 300),
+    dateSource: updates.dateSource ?? memory.dateSource ?? 'file-modified',
+    locationText: (updates.locationText ?? memory.locationText ?? '').trim().slice(0, 160),
+    altText: (updates.altText ?? memory.altText ?? memory.title ?? '').trim().slice(0, 300),
     tags: cleanTags,
     albumIds: cleanAlbums,
-    favoritedBy: (updates.favoritedBy ?? memory.favoritedBy).slice(0, 5),
-    isLingKong: updates.isLingKong ?? memory.isLingKong,
-    lingKongLabel: (updates.lingKongLabel ?? memory.lingKongLabel).trim().slice(0, 80),
-    isSoundtrack: updates.isSoundtrack ?? memory.isSoundtrack,
-    externalSongUrl: (updates.externalSongUrl ?? memory.externalSongUrl).trim().slice(0, 500),
-    soundtrackNotes: (updates.soundtrackNotes ?? memory.soundtrackNotes).trim().slice(0, 1000),
-    status: updates.status ?? memory.status,
-    trashedAt: updates.trashedAt ?? memory.trashedAt,
+    favoritedBy: (updates.favoritedBy ?? memory.favoritedBy ?? []).slice(0, 5),
+    isLingKong: Boolean(updates.isLingKong ?? memory.isLingKong),
+    lingKongLabel: (updates.lingKongLabel ?? memory.lingKongLabel ?? '').trim().slice(0, 80),
+    isSoundtrack: Boolean(updates.isSoundtrack ?? memory.isSoundtrack),
+    externalSongUrl: (updates.externalSongUrl ?? memory.externalSongUrl ?? '').trim().slice(0, 500),
+    soundtrackNotes: (updates.soundtrackNotes ?? memory.soundtrackNotes ?? '').trim().slice(0, 1000),
+    status: updates.status ?? memory.status ?? 'active',
+    trashedAt: updates.trashedAt ?? memory.trashedAt ?? '',
     updatedAt: serverTimestamp(),
   };
 
   try {
     await updateDoc(docRef, payload);
-  } catch (err) {
+  } catch (err: unknown) {
+    // If the memory was loaded directly from Supabase Storage and doesn't have a Firestore doc yet, create it
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (
+      user &&
+      (errMsg.includes('No document to update') ||
+        errMsg.includes('not-found') ||
+        errMsg.includes('NOT_FOUND'))
+    ) {
+      try {
+        await setDoc(docRef, {
+          ...payload,
+          mediaType: memory.mediaType || 'photo',
+          storagePath: (memory.storagePath || '').slice(0, 500),
+          mediaUrl: (memory.mediaUrl || '').slice(0, 750000),
+          thumbnailUrl: (memory.thumbnailUrl || '').slice(0, 350000),
+          originalFileName: (memory.originalFileName || 'memory.jpg').slice(0, 255),
+          contentType: (memory.contentType || 'image/jpeg').slice(0, 100),
+          sizeBytes: memory.sizeBytes || 0,
+          createdBy: user.uid,
+          creatorName: (memory.creatorName || user.displayName || 'Partner').slice(0, 80),
+          uploadedAt: serverTimestamp(),
+        });
+        return;
+      } catch (createErr) {
+        handleFirestoreError(createErr, OperationType.CREATE, docPath);
+      }
+    }
     handleFirestoreError(err, OperationType.UPDATE, docPath);
   }
 }
@@ -707,30 +817,49 @@ export async function permanentlyDeleteMemory(
   let storageDeleted = true;
   let warning: string | undefined;
 
-  if (memory.storagePath) {
-    if (memory.storagePath.startsWith('supabase:') && supabase) {
-      const cleanPath = memory.storagePath.replace(/^supabase:/, '');
-      const { error: delError } = await supabase.storage
-        .from(supabaseBucket)
-        .remove([cleanPath]);
-      if (delError) {
-        storageDeleted = false;
-        warning =
-          'The metadata record was removed, but the file in Supabase Storage could not be deleted automatically.';
+  if (supabase && isSupabaseStorageConfigured()) {
+    try {
+      const pathsToRemove = new Set<string>();
+      if (memory.storagePath && memory.storagePath.startsWith('supabase:')) {
+        pathsToRemove.add(memory.storagePath.replace(/^supabase:/, ''));
       }
-    } else {
-      try {
-        await deleteObject(storageRef(storage, memory.storagePath));
-      } catch (storageErr: unknown) {
-        const code =
-          storageErr && typeof storageErr === 'object' && 'code' in storageErr
-            ? (storageErr as { code: string }).code
-            : '';
-        if (code !== 'storage/object-not-found') {
+      // Also check the memory's folder in Supabase Storage to ensure no orphaned file remains
+      const folderPath = `couples/${COUPLE_SPACE_ID}/memories/${memory.id}`;
+      const { data: folderFiles } = await supabase.storage
+        .from(supabaseBucket)
+        .list(folderPath, { limit: 10 });
+      if (folderFiles && folderFiles.length > 0) {
+        for (const f of folderFiles) {
+          if (f.name) {
+            pathsToRemove.add(`${folderPath}/${f.name}`);
+          }
+        }
+      }
+      if (pathsToRemove.size > 0) {
+        const { error: delError } = await supabase.storage
+          .from(supabaseBucket)
+          .remove(Array.from(pathsToRemove));
+        if (delError) {
           storageDeleted = false;
           warning =
-            'The Firestore metadata record was removed, but the original Storage file could not be deleted automatically.';
+            'The metadata record was removed, but the file in Supabase Storage could not be deleted automatically.';
         }
+      }
+    } catch {
+      storageDeleted = false;
+    }
+  } else if (memory.storagePath && !memory.storagePath.startsWith('supabase:')) {
+    try {
+      await deleteObject(storageRef(storage, memory.storagePath));
+    } catch (storageErr: unknown) {
+      const code =
+        storageErr && typeof storageErr === 'object' && 'code' in storageErr
+          ? (storageErr as { code: string }).code
+          : '';
+      if (code !== 'storage/object-not-found') {
+        storageDeleted = false;
+        warning =
+          'The Firestore metadata record was removed, but the original Storage file could not be deleted automatically.';
       }
     }
   }

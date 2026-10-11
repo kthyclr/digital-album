@@ -347,7 +347,11 @@ const AuthenticatedShell: React.FC = () => {
       />
 
       <MediaViewerModal
-        memory={viewerMemory}
+        memory={
+          viewerMemory
+            ? memories.find((m) => m.id === viewerMemory.id) || viewerMemory
+            : null
+        }
         memoriesList={activeMemories}
         onClose={() => setViewerMemory(null)}
         onSelectMemory={(mem) => setViewerMemory(mem)}

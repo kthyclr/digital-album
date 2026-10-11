@@ -21,7 +21,7 @@ export const SoundtrackSection: React.FC<{
   onOpenUploadAudio: () => void;
   onOpenMemory: (mem: MemoryItem) => void;
 }> = ({ onOpenUploadAudio, onOpenMemory }) => {
-  const { user, memories, addToast } = useCouple();
+  const { user, memories, addToast, patchLocalMemory, upsertLocalMemory } = useCouple();
 
   const [songModalOpen, setSongModalOpen] = useState(false);
   const [title, setTitle] = useState('');
@@ -33,6 +33,19 @@ export const SoundtrackSection: React.FC<{
   const [saving, setSaving] = useState(false);
 
   if (!user) return null;
+
+  const handleToggleFav = async (item: MemoryItem) => {
+    const isFav = item.favoritedBy.includes(user.uid);
+    const nextFavs = isFav
+      ? item.favoritedBy.filter((id) => id !== user.uid)
+      : [...item.favoritedBy, user.uid].slice(0, 5);
+    patchLocalMemory(item.id, { favoritedBy: nextFavs });
+    try {
+      await toggleMemoryFavorite(item, user.uid);
+    } catch {
+      patchLocalMemory(item.id, { favoritedBy: item.favoritedBy });
+    }
+  };
 
   const soundtrackItems = useMemo(
     () =>
@@ -59,7 +72,7 @@ export const SoundtrackSection: React.FC<{
 
     setSaving(true);
     try {
-      await createExternalSoundtrackMemory({
+      const createdSong = await createExternalSoundtrackMemory({
         title,
         caption,
         memoryDate,
@@ -67,6 +80,7 @@ export const SoundtrackSection: React.FC<{
         soundtrackNotes: notes,
         tags: ['soundtrack'],
       });
+      upsertLocalMemory(createdSong);
       setSongModalOpen(false);
       setTitle('');
       setExternalUrl('');
@@ -156,15 +170,17 @@ export const SoundtrackSection: React.FC<{
 
                     <button
                       type="button"
-                      onClick={() => toggleMemoryFavorite(item, user.uid)}
+                      onClick={() => handleToggleFav(item)}
                       aria-label={isFav ? 'Unfavorite' : 'Favorite'}
-                      className="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--accent-pink)] cursor-pointer shrink-0"
+                      className={`p-2 rounded-lg transition-colors cursor-pointer shrink-0 ${
+                        isFav
+                          ? 'text-rose-600 bg-rose-50 dark:bg-rose-950/50'
+                          : 'text-[var(--text-muted)] hover:text-rose-600'
+                      }`}
                     >
                       <Heart
                         className={`w-4 h-4 ${
-                          isFav
-                            ? 'fill-[var(--accent-pink)] text-[var(--accent-pink)]'
-                            : ''
+                          isFav ? 'fill-rose-600 text-rose-600' : ''
                         }`}
                       />
                     </button>

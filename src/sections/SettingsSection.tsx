@@ -31,6 +31,8 @@ export const SettingsSection: React.FC = () => {
     bucketItems,
     addToast,
     signOutUser,
+    patchLocalCoupleConfig,
+    patchLocalUserPrefs,
   } = useCouple();
 
   const [displayName, setDisplayName] = useState(coupleConfig.displayName);
@@ -105,23 +107,28 @@ export const SettingsSection: React.FC = () => {
   const handleSaveCoupleConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingConfig(true);
+    const nextConfigUpdates = {
+      displayName,
+      subtitle,
+      partnerOneName,
+      partnerTwoName,
+      affectionateLabelOne: affectionateOne,
+      affectionateLabelTwo: affectionateTwo,
+      funnyLabelOne: funnyOne,
+      funnyLabelTwo: funnyTwo,
+      relationshipStartDate: startDate,
+      partnerOneBirthday,
+      partnerTwoBirthday,
+      timezone,
+      maxFileSizeMB,
+      trashRetentionDays,
+    };
+
+    // Instant UI update
+    patchLocalCoupleConfig(nextConfigUpdates);
+
     try {
-      await updateCoupleConfiguration(coupleConfig, {
-        displayName,
-        subtitle,
-        partnerOneName,
-        partnerTwoName,
-        affectionateLabelOne: affectionateOne,
-        affectionateLabelTwo: affectionateTwo,
-        funnyLabelOne: funnyOne,
-        funnyLabelTwo: funnyTwo,
-        relationshipStartDate: startDate,
-        partnerOneBirthday,
-        partnerTwoBirthday,
-        timezone,
-        maxFileSizeMB,
-        trashRetentionDays,
-      });
+      await updateCoupleConfiguration(coupleConfig, nextConfigUpdates);
       addToast('Saved shared couple configuration & birthdays', 'success');
     } catch (err) {
       addToast(
@@ -135,10 +142,14 @@ export const SettingsSection: React.FC = () => {
   };
 
   const handleThemeChange = async (theme: 'light' | 'dark' | 'system') => {
+    const prevTheme = userPrefs.theme;
+    // Instant UI theme switch
+    patchLocalUserPrefs({ theme });
     try {
       await updateUserPreferences(userPrefs, { theme });
       addToast(`Theme set to ${theme}`, 'info');
     } catch (err) {
+      patchLocalUserPrefs({ theme: prevTheme });
       addToast(
         'Failed to save theme preference',
         'error',
@@ -148,6 +159,9 @@ export const SettingsSection: React.FC = () => {
   };
 
   const handleReducedMotionToggle = async (reducedMotion: boolean) => {
+    const prevReduced = userPrefs.reducedMotion;
+    // Instant UI motion switch
+    patchLocalUserPrefs({ reducedMotion });
     try {
       await updateUserPreferences(userPrefs, { reducedMotion });
       addToast(
@@ -157,6 +171,7 @@ export const SettingsSection: React.FC = () => {
         'info'
       );
     } catch (err) {
+      patchLocalUserPrefs({ reducedMotion: prevReduced });
       addToast(
         'Failed to save motion preference',
         'error',

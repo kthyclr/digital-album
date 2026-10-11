@@ -31,7 +31,14 @@ import {
 export const BucketListSection: React.FC<{
   onOpenMemory: (mem: MemoryItem) => void;
 }> = ({ onOpenMemory }) => {
-  const { bucketItems, memories, addToast } = useCouple();
+  const {
+    user,
+    bucketItems,
+    memories,
+    addToast,
+    upsertLocalBucketItem,
+    removeLocalBucketItem,
+  } = useCouple();
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<'all' | BucketStatus>(
@@ -115,15 +122,39 @@ export const BucketListSection: React.FC<{
           targetDate,
           linkedMemoryIds,
         });
+        upsertLocalBucketItem({
+          ...editingItem,
+          title: title.trim(),
+          description: description.trim(),
+          category: category.trim(),
+          priority,
+          targetDate: targetDate.trim(),
+          linkedMemoryIds,
+          updatedAt: new Date().toISOString(),
+        });
         addToast('Updated bucket list plan', 'success');
       } else {
-        await createBucketListItem({
+        const newId = await createBucketListItem({
           title,
           description,
           category,
           priority,
           targetDate,
           linkedMemoryIds,
+        });
+        upsertLocalBucketItem({
+          id: newId,
+          title: title.trim(),
+          description: description.trim(),
+          category: category.trim(),
+          status: 'planned',
+          priority,
+          targetDate: targetDate.trim(),
+          linkedMemoryIds,
+          completedAt: '',
+          createdBy: user?.uid || '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         });
         addToast('Added to Our Bucket List', 'success');
       }
@@ -147,6 +178,18 @@ export const BucketListSection: React.FC<{
           ? 'completed'
           : 'planned';
 
+    const nextCompletedAt =
+      nextStatus === 'completed'
+        ? new Date().toISOString().slice(0, 10)
+        : '';
+
+    // Instant UI update
+    upsertLocalBucketItem({
+      ...item,
+      status: nextStatus,
+      completedAt: nextCompletedAt,
+    });
+
     try {
       await updateBucketListItem(item, { status: nextStatus });
       addToast(
@@ -156,6 +199,7 @@ export const BucketListSection: React.FC<{
         'info'
       );
     } catch (err) {
+      upsertLocalBucketItem(item);
       addToast(
         'Failed to update status',
         'error',
@@ -169,6 +213,7 @@ export const BucketListSection: React.FC<{
     setSaving(true);
     try {
       await deleteBucketListItem(itemToDelete.id);
+      removeLocalBucketItem(itemToDelete.id);
       setItemToDelete(null);
       addToast('Removed bucket list item', 'info');
     } catch (err) {

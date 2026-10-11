@@ -39,6 +39,8 @@ export const HomeSection: React.FC<{
     letters,
     bucketItems,
     addToast,
+    patchLocalMemory,
+    patchLocalCoupleConfig,
   } = useCouple();
 
   const [now, setNow] = useState<Date>(() => new Date());
@@ -91,12 +93,15 @@ export const HomeSection: React.FC<{
     const next =
       candidates[Math.floor(Math.random() * candidates.length)] ||
       activeMemories[0];
+    const prevFeaturedId = coupleConfig.featuredMemoryId;
+    patchLocalCoupleConfig({ featuredMemoryId: next.id });
     try {
       await updateCoupleConfiguration(coupleConfig, {
         featuredMemoryId: next.id,
       });
-      addToast('Updated Featured Memory', 'info', next.title);
+      addToast('Updated Featured Memory ⭐', 'info', next.title);
     } catch (err) {
+      patchLocalCoupleConfig({ featuredMemoryId: prevFeaturedId });
       addToast(
         'Could not change featured memory',
         'error',
@@ -106,9 +111,15 @@ export const HomeSection: React.FC<{
   };
 
   const handleToggleFavorite = async (mem: MemoryItem) => {
+    const isFav = mem.favoritedBy.includes(user.uid);
+    const nextFavs = isFav
+      ? mem.favoritedBy.filter((id) => id !== user.uid)
+      : [...mem.favoritedBy, user.uid].slice(0, 5);
+    patchLocalMemory(mem.id, { favoritedBy: nextFavs });
     try {
       await toggleMemoryFavorite(mem, user.uid);
     } catch (err) {
+      patchLocalMemory(mem.id, { favoritedBy: mem.favoritedBy });
       addToast(
         'Could not update favorite',
         'error',

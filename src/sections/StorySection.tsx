@@ -35,7 +35,16 @@ export const StorySection: React.FC<{
   onOpenMemory: (mem: MemoryItem) => void;
   onOpenUpload: () => void;
 }> = ({ onOpenMemory, onOpenUpload }) => {
-  const { user, coupleConfig, memories, milestones, addToast } = useCouple();
+  const {
+    user,
+    coupleConfig,
+    memories,
+    milestones,
+    addToast,
+    patchLocalMemory,
+    upsertLocalMilestone,
+    removeLocalMilestone,
+  } = useCouple();
 
   const [mode, setMode] = useState<'timeline' | 'calendar'>('timeline');
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => new Date());
@@ -55,6 +64,19 @@ export const StorySection: React.FC<{
     useState<StoryMilestone | null>(null);
 
   if (!user) return null;
+
+  const handleToggleFav = async (m: MemoryItem) => {
+    const isFav = m.favoritedBy.includes(user.uid);
+    const nextFavs = isFav
+      ? m.favoritedBy.filter((id) => id !== user.uid)
+      : [...m.favoritedBy, user.uid].slice(0, 5);
+    patchLocalMemory(m.id, { favoritedBy: nextFavs });
+    try {
+      await toggleMemoryFavorite(m, user.uid);
+    } catch {
+      patchLocalMemory(m.id, { favoritedBy: m.favoritedBy });
+    }
+  };
 
   const activeMemories = useMemo(
     () => memories.filter((m) => m.status === 'active'),
@@ -201,14 +223,33 @@ export const StorySection: React.FC<{
           description: mDesc,
           memoryIds: mLinkedIds,
         });
+        upsertLocalMilestone({
+          ...editingMilestone,
+          title: mTitle.trim(),
+          eventDate: mDate.trim(),
+          category: mCategory.trim(),
+          description: mDesc.trim(),
+          memoryIds: mLinkedIds,
+        });
         addToast('Milestone updated', 'success');
       } else {
-        await createStoryMilestone({
+        const newId = await createStoryMilestone({
           title: mTitle,
           eventDate: mDate,
           category: mCategory,
           description: mDesc,
           memoryIds: mLinkedIds,
+        });
+        upsertLocalMilestone({
+          id: newId,
+          title: mTitle.trim(),
+          eventDate: mDate.trim(),
+          category: mCategory.trim(),
+          description: mDesc.trim(),
+          memoryIds: mLinkedIds,
+          createdBy: user.uid,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         });
         addToast('Milestone added to Our Story', 'success');
       }
@@ -229,6 +270,7 @@ export const StorySection: React.FC<{
     setSavingMilestone(true);
     try {
       await deleteStoryMilestone(milestoneToDelete.id);
+      removeLocalMilestone(milestoneToDelete.id);
       setMilestoneToDelete(null);
       addToast('Milestone removed', 'info');
     } catch (err) {
@@ -410,9 +452,7 @@ export const StorySection: React.FC<{
                         memory={mem}
                         currentUserId={user.uid}
                         onOpen={onOpenMemory}
-                        onToggleFavorite={(m) =>
-                          toggleMemoryFavorite(m, user.uid)
-                        }
+                        onToggleFavorite={handleToggleFav}
                       />
                     ))}
                   </div>
@@ -632,9 +672,7 @@ export const StorySection: React.FC<{
                           memory={mem}
                           currentUserId={user.uid}
                           onOpen={onOpenMemory}
-                          onToggleFavorite={(m) =>
-                            toggleMemoryFavorite(m, user.uid)
-                          }
+                          onToggleFavorite={handleToggleFav}
                         />
                       ))}
                     </div>

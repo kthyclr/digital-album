@@ -35,7 +35,15 @@ export const MediaViewerModal: React.FC<{
   onClose: () => void;
   onSelectMemory: (mem: MemoryItem) => void;
 }> = ({ memory, memoriesList, onClose, onSelectMemory }) => {
-  const { user, coupleConfig, albums, addToast } = useCouple();
+  const {
+    user,
+    coupleConfig,
+    albums,
+    addToast,
+    patchLocalMemory,
+    removeLocalMemory,
+    patchLocalCoupleConfig,
+  } = useCouple();
 
   const [isEditing, setIsEditing] = useState(false);
   const [zoomed, setZoomed] = useState(false);
@@ -73,7 +81,7 @@ export const MediaViewerModal: React.FC<{
     setIsSoundtrack(memory.isSoundtrack);
     setExternalSongUrl(memory.externalSongUrl || '');
     setSoundtrackNotes(memory.soundtrackNotes || '');
-  }, [memory]);
+  }, [memory?.id]);
 
   const currentIndex = memory
     ? memoriesList.findIndex((m) => m.id === memory.id)
@@ -105,13 +113,22 @@ export const MediaViewerModal: React.FC<{
   const displayMediaUrl = memory.mediaUrl || memory.thumbnailUrl;
 
   const handleToggleFav = async () => {
+    const nextFavs = isFav
+      ? memory.favoritedBy.filter((id) => id !== user.uid)
+      : [...memory.favoritedBy, user.uid].slice(0, 5);
+
+    // Instant UI update
+    patchLocalMemory(memory.id, { favoritedBy: nextFavs });
+
     try {
       const nextState = await toggleMemoryFavorite(memory, user.uid);
       addToast(
-        nextState ? 'Added to Favorites' : 'Removed from Favorites',
+        nextState ? 'Added to Favorites ❤️' : 'Removed from Favorites',
         'success'
       );
     } catch (err) {
+      // Revert on failure
+      patchLocalMemory(memory.id, { favoritedBy: memory.favoritedBy });
       addToast(
         'Could not update favorite',
         'error',
@@ -121,17 +138,24 @@ export const MediaViewerModal: React.FC<{
   };
 
   const handleSetFeatured = async () => {
+    const nextFeaturedId = isFeatured ? '' : memory.id;
+    const prevFeaturedId = coupleConfig.featuredMemoryId;
+
+    // Instant UI update
+    patchLocalCoupleConfig({ featuredMemoryId: nextFeaturedId });
+
     try {
       await updateCoupleConfiguration(coupleConfig, {
-        featuredMemoryId: isFeatured ? '' : memory.id,
+        featuredMemoryId: nextFeaturedId,
       });
       addToast(
         isFeatured
           ? 'Cleared Featured Memory'
-          : 'Set as Featured Memory on Home',
+          : 'Set as Featured Memory on Home ⭐',
         'success'
       );
     } catch (err) {
+      patchLocalCoupleConfig({ featuredMemoryId: prevFeaturedId });
       addToast(
         'Failed to update featured memory',
         'error',
@@ -147,23 +171,31 @@ export const MediaViewerModal: React.FC<{
       return;
     }
     setSaving(true);
+    const parts = memoryDate.split('-').map((p) => parseInt(p, 10));
+    const nextUpdates = {
+      title,
+      caption,
+      memoryDate,
+      memoryYear: parts[0] || memory.memoryYear,
+      memoryMonth: parts[1] || memory.memoryMonth,
+      dateSource: (
+        memoryDate !== memory.memoryDate ? 'manual' : memory.dateSource
+      ) as MemoryItem['dateSource'],
+      locationText,
+      altText,
+      tags,
+      albumIds,
+      isLingKong,
+      lingKongLabel: isLingKong ? lingKongLabel : '',
+      isSoundtrack,
+      externalSongUrl,
+      soundtrackNotes,
+    };
+
+    patchLocalMemory(memory.id, nextUpdates);
+
     try {
-      await updateMemoryMetadata(memory, {
-        title,
-        caption,
-        memoryDate,
-        dateSource:
-          memoryDate !== memory.memoryDate ? 'manual' : memory.dateSource,
-        locationText,
-        altText,
-        tags,
-        albumIds,
-        isLingKong,
-        lingKongLabel: isLingKong ? lingKongLabel : '',
-        isSoundtrack,
-        externalSongUrl,
-        soundtrackNotes,
-      });
+      await updateMemoryMetadata(memory, nextUpdates);
       setIsEditing(false);
       addToast('Memory details updated', 'success');
     } catch (err) {
@@ -179,14 +211,29 @@ export const MediaViewerModal: React.FC<{
 
   const handleMoveToTrashOrRestore = async () => {
     const moveToTrash = memory.status === 'active';
+    const nextStatus = moveToTrash ? 'trashed' : 'active';
+    const nextTrashedAt = moveToTrash
+      ? new Date().toISOString().slice(0, 40)
+      : '';
+
+    // Instant UI update so item immediately leaves active gallery or trash view
+    patchLocalMemory(memory.id, {
+      status: nextStatus,
+      trashedAt: nextTrashedAt,
+    });
+    onClose();
+
     try {
       await setMemoryTrashState(memory, moveToTrash);
       addToast(
         moveToTrash ? 'Moved memory to Trash' : 'Restored memory from Trash',
         'info'
       );
-      onClose();
     } catch (err) {
+      patchLocalMemory(memory.id, {
+        status: memory.status,
+        trashedAt: memory.trashedAt,
+      });
       addToast(
         'Action failed',
         'error',
@@ -199,6 +246,8 @@ export const MediaViewerModal: React.FC<{
     setSaving(true);
     try {
       const res = await permanentlyDeleteMemory(memory);
+      // Immediately remove from UI state without requiring page refresh
+      removeLocalMemory(memory.id);
       setConfirmPermanentDelete(false);
       if (res.warning) {
         addToast('Deleted with Storage warning', 'warning', res.warning);
@@ -383,12 +432,17 @@ export const MediaViewerModal: React.FC<{
                     type="button"
                     onClick={handleToggleFav}
                     aria-label={isFav ? 'Unfavorite' : 'Favorite'}
-                    className="p-2 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--accent-pink)] cursor-pointer"
+                    title={isFav ? 'Remove from Favorites' : 'Add to Favorites'}
+                    className={`p-2 rounded-lg border transition-colors cursor-pointer ${
+                      isFav
+                        ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-500 text-rose-600'
+                        : 'border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-rose-600 hover:border-rose-400'
+                    }`}
                   >
                     <Heart
-                      className={`w-4 h-4 ${
+                      className={`w-4 h-4 transition-transform active:scale-125 ${
                         isFav
-                          ? 'fill-[var(--accent-pink)] text-[var(--accent-pink)]'
+                          ? 'fill-rose-600 text-rose-600'
                           : ''
                       }`}
                     />
@@ -396,16 +450,20 @@ export const MediaViewerModal: React.FC<{
                   <button
                     type="button"
                     onClick={handleSetFeatured}
-                    title="Set or clear as Featured Memory on Home"
-                    className={`p-2 rounded-lg border border-[var(--border-hairline)] cursor-pointer ${
+                    title={
                       isFeatured
-                        ? 'bg-[var(--bg-powder-blue)] text-[var(--accent-blue)]'
-                        : 'text-[var(--text-secondary)] hover:text-[var(--accent-blue)]'
+                        ? 'Clear Featured Memory on Home'
+                        : 'Set as Featured Memory on Home'
+                    }
+                    className={`p-2 rounded-lg border transition-colors cursor-pointer ${
+                      isFeatured
+                        ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-500 text-amber-500'
+                        : 'border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-amber-500 hover:border-amber-400'
                     }`}
                   >
                     <Star
-                      className={`w-4 h-4 ${
-                        isFeatured ? 'fill-[var(--accent-blue)]' : ''
+                      className={`w-4 h-4 transition-transform active:scale-125 ${
+                        isFeatured ? 'fill-amber-400 text-amber-500' : ''
                       }`}
                     />
                   </button>
@@ -413,6 +471,7 @@ export const MediaViewerModal: React.FC<{
                     type="button"
                     onClick={() => setIsEditing(true)}
                     aria-label="Edit memory details"
+                    title="Edit memory details"
                     className="p-2 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                   >
                     <Edit3 className="w-4 h-4" />
@@ -737,7 +796,7 @@ export const MediaViewerModal: React.FC<{
       <ConfirmDialog
         open={confirmPermanentDelete}
         title={`Permanently delete "${memory.title || memory.originalFileName}"?`}
-        description="This will permanently remove both the Firestore metadata and the media file from Firebase Storage. This action cannot be undone."
+        description="This will permanently remove both the Firestore metadata and the media file from Supabase Storage. This action cannot be undone."
         confirmLabel="Delete Permanently"
         busy={saving}
         onConfirm={handleConfirmPermanentDelete}

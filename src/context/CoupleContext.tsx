@@ -72,6 +72,19 @@ interface CoupleContextValue {
   signInWithGoogle: () => Promise<void>;
   signOutUser: () => Promise<void>;
   syncSupabaseStorage: () => Promise<void>;
+  patchLocalMemory: (memoryId: string, updates: Partial<MemoryItem>) => void;
+  upsertLocalMemory: (memory: MemoryItem) => void;
+  removeLocalMemory: (memoryId: string) => void;
+  patchLocalCoupleConfig: (updates: Partial<CoupleConfig>) => void;
+  patchLocalUserPrefs: (updates: Partial<UserPreferences>) => void;
+  upsertLocalAlbum: (album: CustomAlbum) => void;
+  removeLocalAlbum: (albumId: string) => void;
+  upsertLocalMilestone: (milestone: StoryMilestone) => void;
+  removeLocalMilestone: (milestoneId: string) => void;
+  upsertLocalLetter: (letter: TimeCapsuleLetter) => void;
+  removeLocalLetter: (letterId: string) => void;
+  upsertLocalBucketItem: (item: BucketListItem) => void;
+  removeLocalBucketItem: (itemId: string) => void;
 }
 
 const CoupleContext = createContext<CoupleContextValue | undefined>(undefined);
@@ -468,6 +481,100 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [memories, addToast]);
 
+  const patchLocalMemory = useCallback(
+    (memoryId: string, updates: Partial<MemoryItem>) => {
+      setMemories((prev) =>
+        prev.map((m) => (m.id === memoryId ? { ...m, ...updates } : m))
+      );
+    },
+    []
+  );
+
+  const upsertLocalMemory = useCallback((memory: MemoryItem) => {
+    setMemories((prev) => {
+      const exists = prev.some((m) => m.id === memory.id);
+      const next = exists
+        ? prev.map((m) => (m.id === memory.id ? memory : m))
+        : [memory, ...prev];
+      return next.sort((a, b) => b.memoryDate.localeCompare(a.memoryDate));
+    });
+  }, []);
+
+  const removeLocalMemory = useCallback((memoryId: string) => {
+    setMemories((prev) => prev.filter((m) => m.id !== memoryId));
+  }, []);
+
+  const patchLocalCoupleConfig = useCallback(
+    (updates: Partial<CoupleConfig>) => {
+      setCoupleConfig((prev) => ({ ...prev, ...updates }));
+    },
+    []
+  );
+
+  const patchLocalUserPrefs = useCallback(
+    (updates: Partial<UserPreferences>) => {
+      setUserPrefs((prev) => ({ ...prev, ...updates }));
+    },
+    []
+  );
+
+  const upsertLocalAlbum = useCallback((album: CustomAlbum) => {
+    setAlbums((prev) => {
+      const exists = prev.some((a) => a.id === album.id);
+      if (exists) {
+        return prev.map((a) => (a.id === album.id ? album : a));
+      }
+      return [...prev, album].sort((a, b) => a.sortOrder - b.sortOrder);
+    });
+  }, []);
+
+  const removeLocalAlbum = useCallback((albumId: string) => {
+    setAlbums((prev) => prev.filter((a) => a.id !== albumId));
+  }, []);
+
+  const upsertLocalMilestone = useCallback((milestone: StoryMilestone) => {
+    setMilestones((prev) => {
+      const exists = prev.some((m) => m.id === milestone.id);
+      const next = exists
+        ? prev.map((m) => (m.id === milestone.id ? milestone : m))
+        : [...prev, milestone];
+      return next.sort((a, b) => a.eventDate.localeCompare(b.eventDate));
+    });
+  }, []);
+
+  const removeLocalMilestone = useCallback((milestoneId: string) => {
+    setMilestones((prev) => prev.filter((m) => m.id !== milestoneId));
+  }, []);
+
+  const upsertLocalLetter = useCallback((letter: TimeCapsuleLetter) => {
+    setLetters((prev) => {
+      const exists = prev.some((l) => l.id === letter.id);
+      const next = exists
+        ? prev.map((l) => (l.id === letter.id ? letter : l))
+        : [...prev, letter];
+      return next.sort((a, b) =>
+        a.unlockDateIso.localeCompare(b.unlockDateIso)
+      );
+    });
+  }, []);
+
+  const removeLocalLetter = useCallback((letterId: string) => {
+    setLetters((prev) => prev.filter((l) => l.id !== letterId));
+  }, []);
+
+  const upsertLocalBucketItem = useCallback((item: BucketListItem) => {
+    setBucketItems((prev) => {
+      const exists = prev.some((b) => b.id === item.id);
+      return exists
+        ? prev.map((b) => (b.id === item.id ? item : b))
+        : [item, ...prev];
+    });
+  }, []);
+
+  const removeLocalBucketItem = useCallback((itemId: string) => {
+    setBucketItems((prev) => prev.filter((b) => b.id !== itemId));
+  }, []);
+
   return (
     <CoupleContext.Provider
       value={{
@@ -491,6 +598,19 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
         signInWithGoogle,
         signOutUser,
         syncSupabaseStorage,
+        patchLocalMemory,
+        upsertLocalMemory,
+        removeLocalMemory,
+        patchLocalCoupleConfig,
+        patchLocalUserPrefs,
+        upsertLocalAlbum,
+        removeLocalAlbum,
+        upsertLocalMilestone,
+        removeLocalMilestone,
+        upsertLocalLetter,
+        removeLocalLetter,
+        upsertLocalBucketItem,
+        removeLocalBucketItem,
       }}
     >
       {children}

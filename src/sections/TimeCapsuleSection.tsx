@@ -25,10 +25,19 @@ import {
   updateLockedLetter,
   deleteLockedLetter,
 } from '../services/coupleDataService';
+import { Timestamp } from 'firebase/firestore';
 import { getUpcomingBirthdays } from '../utils/dateUtils';
+import { PARTNER_PROFILES } from '../config/coupleConfig';
 
 export const TimeCapsuleSection: React.FC = () => {
-  const { user, coupleConfig, letters, addToast } = useCouple();
+  const {
+    user,
+    coupleConfig,
+    letters,
+    addToast,
+    upsertLocalLetter,
+    removeLocalLetter,
+  } = useCouple();
 
   const [composeOpen, setComposeOpen] = useState(false);
   const [editingLetter, setEditingLetter] =
@@ -115,6 +124,11 @@ export const TimeCapsuleSection: React.FC = () => {
 
     setSaving(true);
     try {
+      const unlockDateObj = new Date(unlockDateIso);
+      const unlockTs = !isNaN(unlockDateObj.getTime())
+        ? Timestamp.fromDate(unlockDateObj)
+        : Timestamp.now();
+
       if (editingLetter) {
         await updateLockedLetter(editingLetter.id, {
           title,
@@ -123,14 +137,40 @@ export const TimeCapsuleSection: React.FC = () => {
           unlockDateIso,
           body: body.trim() ? body : undefined,
         });
+        upsertLocalLetter({
+          ...editingLetter,
+          title: title.trim(),
+          recipient,
+          occasionNote: occasionNote.trim(),
+          unlockAt: unlockTs,
+          unlockDateIso: unlockDateIso.trim(),
+          updatedAt: Timestamp.now(),
+        });
         addToast('Updated sealed Time Capsule letter', 'success');
       } else {
-        await createTimeCapsuleLetter({
+        const newId = await createTimeCapsuleLetter({
           title,
           recipient,
           occasionNote,
           unlockDateIso,
           body,
+        });
+        const partnerProfile =
+          PARTNER_PROFILES[(user.email || '').toLowerCase()] || {
+            name: user.displayName || 'Partner',
+          };
+        upsertLocalLetter({
+          id: newId,
+          title: title.trim(),
+          recipient,
+          occasionNote: occasionNote.trim(),
+          unlockAt: unlockTs,
+          unlockDateIso: unlockDateIso.trim(),
+          readBy: [],
+          createdBy: user.uid,
+          creatorName: partnerProfile.name,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
         });
         addToast(
           'Sealed letter in Time Capsule',
@@ -157,6 +197,12 @@ export const TimeCapsuleSection: React.FC = () => {
     try {
       const secretBody = await readUnlockedLetterBody(letter.id);
       setOpenedBody(secretBody);
+      if (!letter.readBy.includes(user.uid)) {
+        upsertLocalLetter({
+          ...letter,
+          readBy: [...letter.readBy, user.uid].slice(0, 5),
+        });
+      }
       await markLetterAsRead(letter, user.uid);
     } catch (err) {
       setOpenedLetter(null);
@@ -177,6 +223,7 @@ export const TimeCapsuleSection: React.FC = () => {
     setSaving(true);
     try {
       await deleteLockedLetter(letterToDelete.id);
+      removeLocalLetter(letterToDelete.id);
       setLetterToDelete(null);
       addToast('Deleted locked letter', 'info');
     } catch (err) {

@@ -22,6 +22,9 @@ import {
 import { getMonthYearLabel } from '../utils/dateUtils';
 import {
   toggleMemoryFavorite,
+  setMemoryTrashState,
+  permanentlyDeleteMemory,
+  updateCoupleConfiguration,
   createCustomAlbum,
   updateCustomAlbum,
   deleteCustomAlbum,
@@ -48,8 +51,105 @@ export const MemoriesSection: React.FC<{
     coupleConfig,
     addToast,
     syncSupabaseStorage,
+    patchLocalMemory,
+    removeLocalMemory,
+    patchLocalCoupleConfig,
+    patchLocalUserPrefs,
+    upsertLocalAlbum,
+    removeLocalAlbum,
   } = useCouple();
   const [syncingStorage, setSyncingStorage] = useState(false);
+  const [memoryToDeletePermanently, setMemoryToDeletePermanently] =
+    useState<MemoryItem | null>(null);
+  const [deletingMemory, setDeletingMemory] = useState(false);
+
+  const handleToggleFav = async (m: MemoryItem) => {
+    if (!user) return;
+    const isFav = m.favoritedBy.includes(user.uid);
+    const nextFavs = isFav
+      ? m.favoritedBy.filter((id) => id !== user.uid)
+      : [...m.favoritedBy, user.uid].slice(0, 5);
+    patchLocalMemory(m.id, { favoritedBy: nextFavs });
+    try {
+      const nextState = await toggleMemoryFavorite(m, user.uid);
+      addToast(
+        nextState ? 'Added to Favorites ❤️' : 'Removed from Favorites',
+        'success'
+      );
+    } catch {
+      patchLocalMemory(m.id, { favoritedBy: m.favoritedBy });
+      addToast('Could not update favorite', 'error');
+    }
+  };
+
+  const handleToggleFeatured = async (m: MemoryItem) => {
+    const isFeatured = coupleConfig.featuredMemoryId === m.id;
+    const nextFeaturedId = isFeatured ? '' : m.id;
+    const prevFeaturedId = coupleConfig.featuredMemoryId;
+    patchLocalCoupleConfig({ featuredMemoryId: nextFeaturedId });
+    try {
+      await updateCoupleConfiguration(coupleConfig, {
+        featuredMemoryId: nextFeaturedId,
+      });
+      addToast(
+        isFeatured
+          ? 'Cleared Featured Memory'
+          : 'Set as Featured Memory on Home ⭐',
+        'success'
+      );
+    } catch {
+      patchLocalCoupleConfig({ featuredMemoryId: prevFeaturedId });
+      addToast('Could not update featured memory', 'error');
+    }
+  };
+
+  const handleMoveToTrashOrRestore = async (m: MemoryItem) => {
+    const moveToTrash = m.status === 'active';
+    const nextStatus = moveToTrash ? 'trashed' : 'active';
+    const nextTrashedAt = moveToTrash
+      ? new Date().toISOString().slice(0, 40)
+      : '';
+    patchLocalMemory(m.id, {
+      status: nextStatus,
+      trashedAt: nextTrashedAt,
+    });
+    try {
+      await setMemoryTrashState(m, moveToTrash);
+      addToast(
+        moveToTrash ? 'Moved memory to Trash' : 'Restored memory from Trash',
+        'info'
+      );
+    } catch {
+      patchLocalMemory(m.id, {
+        status: m.status,
+        trashedAt: m.trashedAt,
+      });
+      addToast('Could not update trash status', 'error');
+    }
+  };
+
+  const handleConfirmPermanentDeleteMemory = async () => {
+    if (!memoryToDeletePermanently) return;
+    setDeletingMemory(true);
+    try {
+      const res = await permanentlyDeleteMemory(memoryToDeletePermanently);
+      removeLocalMemory(memoryToDeletePermanently.id);
+      setMemoryToDeletePermanently(null);
+      if (res.warning) {
+        addToast('Deleted with Storage warning', 'warning', res.warning);
+      } else {
+        addToast('Memory permanently deleted', 'info');
+      }
+    } catch (err) {
+      addToast(
+        'Failed to permanently delete memory',
+        'error',
+        err instanceof Error ? err.message : undefined
+      );
+    } finally {
+      setDeletingMemory(false);
+    }
+  };
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(
     userPrefs.defaultViewMode || 'grid'
@@ -230,6 +330,7 @@ export const MemoriesSection: React.FC<{
 
   const handleChangeViewMode = async (mode: 'grid' | 'list') => {
     setViewMode(mode);
+    patchLocalUserPrefs({ defaultViewMode: mode });
     try {
       await updateUserPreferences(userPrefs, { defaultViewMode: mode });
     } catch {
@@ -266,6 +367,12 @@ export const MemoriesSection: React.FC<{
           description: albumDesc,
           coverMemoryId: albumCoverId,
         });
+        upsertLocalAlbum({
+          ...editingAlbum,
+          title: albumTitle.trim(),
+          description: albumDesc.trim(),
+          coverMemoryId: albumCoverId,
+        });
         addToast('Updated album', 'success');
       } else {
         const newId = await createCustomAlbum(
@@ -273,6 +380,16 @@ export const MemoriesSection: React.FC<{
           albumDesc,
           albumCoverId
         );
+        upsertLocalAlbum({
+          id: newId,
+          title: albumTitle.trim(),
+          description: albumDesc.trim(),
+          coverMemoryId: albumCoverId,
+          sortOrder: Date.now() % 9000,
+          createdBy: user.uid,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
         setSelectedAlbumId(newId);
         addToast('Created custom album', 'success');
       }
@@ -293,6 +410,7 @@ export const MemoriesSection: React.FC<{
     setSavingAlbum(true);
     try {
       await deleteCustomAlbum(albumToDelete.id);
+      removeLocalAlbum(albumToDelete.id);
       if (selectedAlbumId === albumToDelete.id) {
         setSelectedAlbumId('all');
       }
@@ -691,11 +809,13 @@ export const MemoriesSection: React.FC<{
                       key={mem.id}
                       memory={mem}
                       currentUserId={user.uid}
+                      featuredMemoryId={coupleConfig.featuredMemoryId}
                       viewMode="grid"
                       onOpen={onOpenMemory}
-                      onToggleFavorite={(m) =>
-                        toggleMemoryFavorite(m, user.uid)
-                      }
+                      onToggleFavorite={handleToggleFav}
+                      onToggleFeatured={handleToggleFeatured}
+                      onTrashOrRestore={handleMoveToTrashOrRestore}
+                      onPermanentDelete={(m) => setMemoryToDeletePermanently(m)}
                     />
                   ))}
                 </div>
@@ -706,11 +826,13 @@ export const MemoriesSection: React.FC<{
                       key={mem.id}
                       memory={mem}
                       currentUserId={user.uid}
+                      featuredMemoryId={coupleConfig.featuredMemoryId}
                       viewMode="list"
                       onOpen={onOpenMemory}
-                      onToggleFavorite={(m) =>
-                        toggleMemoryFavorite(m, user.uid)
-                      }
+                      onToggleFavorite={handleToggleFav}
+                      onToggleFeatured={handleToggleFeatured}
+                      onTrashOrRestore={handleMoveToTrashOrRestore}
+                      onPermanentDelete={(m) => setMemoryToDeletePermanently(m)}
                     />
                   ))}
                 </div>
@@ -725,9 +847,13 @@ export const MemoriesSection: React.FC<{
               key={mem.id}
               memory={mem}
               currentUserId={user.uid}
+              featuredMemoryId={coupleConfig.featuredMemoryId}
               viewMode="grid"
               onOpen={onOpenMemory}
-              onToggleFavorite={(m) => toggleMemoryFavorite(m, user.uid)}
+              onToggleFavorite={handleToggleFav}
+              onToggleFeatured={handleToggleFeatured}
+              onTrashOrRestore={handleMoveToTrashOrRestore}
+              onPermanentDelete={(m) => setMemoryToDeletePermanently(m)}
             />
           ))}
         </div>
@@ -738,9 +864,13 @@ export const MemoriesSection: React.FC<{
               key={mem.id}
               memory={mem}
               currentUserId={user.uid}
+              featuredMemoryId={coupleConfig.featuredMemoryId}
               viewMode="list"
               onOpen={onOpenMemory}
-              onToggleFavorite={(m) => toggleMemoryFavorite(m, user.uid)}
+              onToggleFavorite={handleToggleFav}
+              onToggleFeatured={handleToggleFeatured}
+              onTrashOrRestore={handleMoveToTrashOrRestore}
+              onPermanentDelete={(m) => setMemoryToDeletePermanently(m)}
             />
           ))}
         </div>
@@ -861,6 +991,17 @@ export const MemoriesSection: React.FC<{
         busy={savingAlbum}
         onConfirm={handleConfirmDeleteAlbum}
         onCancel={() => setAlbumToDelete(null)}
+      />
+
+      {/* Permanent Delete Memory Confirmation from Card */}
+      <ConfirmDialog
+        open={Boolean(memoryToDeletePermanently)}
+        title={`Permanently delete "${memoryToDeletePermanently?.title || memoryToDeletePermanently?.originalFileName}"?`}
+        description="This will permanently remove both the Firestore metadata and the media file from Supabase Storage. This action cannot be undone."
+        confirmLabel="Delete Permanently"
+        busy={deletingMemory}
+        onConfirm={handleConfirmPermanentDeleteMemory}
+        onCancel={() => setMemoryToDeletePermanently(null)}
       />
     </div>
   );
