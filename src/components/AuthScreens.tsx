@@ -80,18 +80,9 @@ export const AuthScreens: React.FC = () => {
   return (
     <div className="min-h-screen grid grid-rows-[auto_1fr_auto] text-[var(--ink)]">
       {/* Header */}
-      <header className="px-6 sm:px-12 lg:px-16 py-8 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-[var(--ink)] bg-[var(--paper-pink)] overflow-hidden shrink-0 shadow-xs">
-            <img
-              src="https://ecxdhqmalqtgywsclkqu.supabase.co/storage/v1/object/public/digital-album/couples/kathy-austin-space/branding/couple_logo_1791742767554.jpg"
-              alt="Moly & Love Logo"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="font-gaegu text-4xl sm:text-5xl leading-[0.8] tracking-[-0.04em] font-bold">
-            Moly &amp; Love
-          </div>
+      <header className="px-6 sm:px-12 lg:px-16 py-8 flex items-end justify-between gap-4">
+        <div className="font-gaegu text-5xl leading-[0.8] tracking-[-0.04em] font-bold">
+          Moly &amp; Love
         </div>
         <div className="font-space-mono text-[0.65rem] uppercase tracking-[0.15em] opacity-60 text-right">
           Kathy &amp; Austin · Private Access

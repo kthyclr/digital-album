@@ -71,15 +71,16 @@ export async function bootstrapAuthorizedCoupleMember(
     if (!coupleSnap.exists()) {
       await setDoc(coupleDocRef, {
         ...DEFAULT_COUPLE_CONFIG,
+        logoUrl: '',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         updatedBy: uid,
       });
     } else {
       const data = coupleSnap.data();
-      if (!data.logoUrl || data.logoUrl.startsWith('/src/assets/')) {
+      if (data.logoUrl) {
         await updateDoc(coupleDocRef, {
-          logoUrl: DEFAULT_COUPLE_CONFIG.logoUrl,
+          logoUrl: '',
           updatedAt: serverTimestamp(),
           updatedBy: uid,
         });
@@ -406,6 +407,113 @@ export async function uploadAndCreateMemory(
 }
 
 /**
+ * Permanently deletes an orphaned memory metadata record from Firebase Firestore
+ * when its corresponding media file in Supabase Storage was removed.
+ */
+export async function pruneDeletedSupabaseMemory(memoryId: string): Promise<void> {
+  try {
+    const memRef = doc(db, 'couples', COUPLE_SPACE_ID, 'memories', memoryId);
+    await deleteDoc(memRef);
+  } catch (err) {
+    console.warn(`Could not prune memory ${memoryId} from Firestore:`, err);
+  }
+}
+
+/**
+ * Strict synchronization between Supabase Storage (media files) and Firebase Firestore (metadata).
+ * Rule: Photos, videos, and audios are stored in Supabase.
+ * If media files are deleted from Supabase Storage:
+ * 1. The memory is excluded from the returned list (NOT displayed in UI).
+ * 2. The orphaned metadata record in Firebase Firestore is permanently deleted via deleteDoc,
+ *    ensuring it is no longer stored in Firebase and will not be fetched again!
+ */
+export async function reconcileMemoriesWithSupabase(
+  firestoreMemories: MemoryItem[],
+  onPruned?: (prunedIds: string[]) => void
+): Promise<MemoryItem[]> {
+  if (!isSupabaseStorageConfigured() || !supabase) {
+    return firestoreMemories;
+  }
+
+  const baseFolder = `couples/${COUPLE_SPACE_ID}/memories`;
+  let memoryFolders: { name: string }[] = [];
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(supabaseBucket)
+      .list(baseFolder, { limit: 1000 });
+    if (error) {
+      console.warn('Could not list Supabase memories folder:', error);
+      return firestoreMemories;
+    }
+    memoryFolders = data || [];
+  } catch (err) {
+    console.warn('Error querying Supabase storage:', err);
+    return firestoreMemories;
+  }
+
+  // Set of memory IDs that have a folder in Supabase
+  const activeSupabaseFolderIds = new Set<string>();
+  for (const folder of memoryFolders) {
+    if (folder.name && !folder.name.startsWith('.')) {
+      activeSupabaseFolderIds.add(folder.name);
+    }
+  }
+
+  // To be 100% accurate, verify folders have actual media files
+  const verifiedValidFolderIds = new Set<string>();
+  for (const memId of activeSupabaseFolderIds) {
+    try {
+      const { data: files } = await supabase.storage
+        .from(supabaseBucket)
+        .list(`${baseFolder}/${memId}`, { limit: 3 });
+      if (files && files.some((f) => f.name && !f.name.startsWith('.'))) {
+        verifiedValidFolderIds.add(memId);
+      }
+    } catch {
+      verifiedValidFolderIds.add(memId);
+    }
+  }
+
+  const validMemories: MemoryItem[] = [];
+  const prunedIds: string[] = [];
+
+  for (const mem of firestoreMemories) {
+    // External song links without Supabase files (e.g. YouTube/Spotify soundtrack bookmarks) remain stored in Firestore
+    const isExternalSongLink =
+      mem.mediaType === 'audio' &&
+      Boolean(mem.externalSongUrl) &&
+      (!mem.storagePath || !mem.storagePath.startsWith('supabase:'));
+
+    if (isExternalSongLink) {
+      validMemories.push(mem);
+      continue;
+    }
+
+    // All photos, videos, and uploaded audio notes MUST exist in Supabase Storage!
+    const existsInSupabase = verifiedValidFolderIds.has(mem.id);
+
+    if (existsInSupabase) {
+      validMemories.push(mem);
+    } else {
+      // The file was deleted from Supabase!
+      // Exclude from display AND delete from Firebase Firestore so it is no longer stored there or fetched!
+      prunedIds.push(mem.id);
+      const memRef = doc(db, 'couples', COUPLE_SPACE_ID, 'memories', mem.id);
+      deleteDoc(memRef).catch((e) =>
+        console.warn(`Could not prune orphaned memory ${mem.id} from Firestore:`, e)
+      );
+    }
+  }
+
+  if (onPruned && prunedIds.length > 0) {
+    onPruned(prunedIds);
+  }
+
+  return validMemories;
+}
+
+/**
  * Automatically reconciles any files stored in Supabase Storage (`digital-album`)
  * under `couples/kathy-austin-space/memories/{memoryId}/{timestamp}_{filename}`
  * that do not yet have a corresponding Firestore memory document, or repairs broken URLs.
@@ -417,8 +525,11 @@ export async function syncOrphanedSupabaseMemories(
   const user = auth.currentUser;
   if (!user || !isSupabaseStorageConfigured() || !supabase) return 0;
 
+  // First prune any memories whose files were deleted from Supabase Storage
+  const cleanedMemories = await reconcileMemoriesWithSupabase(existingMemories);
+
   const existingById = new Map<string, MemoryItem>();
-  for (const m of existingMemories) {
+  for (const m of cleanedMemories) {
     existingById.set(m.id, m);
   }
 

@@ -138,26 +138,16 @@ const AuthenticatedShell: React.FC = () => {
       {/* Variation 14 Scrapbook Top Bar */}
       <header className="sticky top-0 z-30 bg-[var(--bg-canvas)]/95 backdrop-blur-xs border-b-2 border-dashed border-[var(--ink-faint)]">
         <div className="max-w-[1440px] mx-auto px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-3 sm:gap-8">
-          {/* Zone 1: Logo */}
+          {/* Zone 1: Logo — First version text logo: Moly & Love */}
           <button
             type="button"
             onClick={() => handleNavigate('home')}
-            className="flex items-center gap-2.5 text-left group cursor-pointer"
+            className="flex items-center gap-2 text-left group cursor-pointer py-1"
             aria-label="Go to Home"
           >
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-[var(--ink)] bg-[var(--paper-pink)] overflow-hidden shrink-0 flex items-center justify-center shadow-xs transition-all group-hover:scale-105 group-hover:rotate-2">
-              {coupleConfig.logoUrl ? (
-                <img
-                  src={coupleConfig.logoUrl}
-                  alt="Kathy & Austin Logo"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="font-space-mono text-xs sm:text-sm font-bold tracking-tight text-[var(--ink)] select-none">
-                  A &amp; K
-                </span>
-              )}
-            </div>
+            <span className="font-gaegu text-3xl sm:text-4xl leading-none font-bold text-[var(--ink)] tracking-tight group-hover:text-[var(--accent)] transition-colors select-none">
+              Moly &amp; Love
+            </span>
           </button>
 
           {/* Zone 2: Space Mono Navigation Links */}

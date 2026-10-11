@@ -67,7 +67,7 @@ export const DEFAULT_COUPLE_CONFIG: Omit<CoupleConfig, 'createdAt' | 'updatedAt'
   partnerTwoBirthday: '2000-03-21',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila',
   featuredMemoryId: '',
-  logoUrl: 'https://ecxdhqmalqtgywsclkqu.supabase.co/storage/v1/object/public/digital-album/couples/kathy-austin-space/branding/couple_logo_1791742767554.jpg',
+  logoUrl: '',
   maxFileSizeMB: 50,
   trashRetentionDays: 30,
 };

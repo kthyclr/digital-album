@@ -45,6 +45,8 @@ import {
 import {
   bootstrapAuthorizedCoupleMember,
   syncOrphanedSupabaseMemories,
+  reconcileMemoriesWithSupabase,
+  pruneDeletedSupabaseMemory,
 } from '../services/coupleDataService';
 
 interface CoupleContextValue {
@@ -72,6 +74,7 @@ interface CoupleContextValue {
   signInWithGoogle: () => Promise<void>;
   signOutUser: () => Promise<void>;
   syncSupabaseStorage: () => Promise<void>;
+  pruneMemory: (memoryId: string) => Promise<void>;
   patchLocalMemory: (memoryId: string, updates: Partial<MemoryItem>) => void;
   upsertLocalMemory: (memory: MemoryItem) => void;
   removeLocalMemory: (memoryId: string) => void;
@@ -237,10 +240,7 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
           setCoupleConfig({
             ...DEFAULT_COUPLE_CONFIG,
             ...data,
-            logoUrl:
-              data.logoUrl && !data.logoUrl.startsWith('/src/assets/')
-                ? data.logoUrl
-                : DEFAULT_COUPLE_CONFIG.logoUrl,
+            logoUrl: '',
           });
         }
       },
@@ -279,7 +279,6 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
     );
 
     // 4. Memories Subcollection Listener (bounded to 250 items for performance)
-    let didInitialSupabaseSync = false;
     const memoriesPath = `couples/${COUPLE_SPACE_ID}/memories`;
     const memoriesQuery = query(
       collection(db, 'couples', COUPLE_SPACE_ID, 'memories'),
@@ -288,41 +287,22 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
     );
     const unsubMemories = onSnapshot(
       memoriesQuery,
-      (snap) => {
-        const list: MemoryItem[] = snap.docs.map((d) => ({
+      async (snap) => {
+        const firestoreList: MemoryItem[] = snap.docs.map((d) => ({
           id: d.id,
           ...(d.data() as Omit<MemoryItem, 'id'>),
         }));
-        setMemories(list);
-        setDataLoading(false);
 
-        if (!didInitialSupabaseSync) {
-          didInitialSupabaseSync = true;
-          syncOrphanedSupabaseMemories(list, (recoveredItems) => {
-            if (recoveredItems.length > 0) {
-              setMemories((prev) => {
-                const existingIds = new Set(prev.map((m) => m.id));
-                const merged = [
-                  ...prev,
-                  ...recoveredItems.filter((r) => !existingIds.has(r.id)),
-                ];
-                return merged.sort((a, b) =>
-                  b.memoryDate.localeCompare(a.memoryDate)
-                );
-              });
-            }
-          })
-            .then((count) => {
-              if (count > 0) {
-                addToast(
-                  `Synced ${count} ${count === 1 ? 'memory' : 'memories'} from Supabase Storage`,
-                  'success'
-                );
-              }
-            })
-            .catch((err) => {
-              console.warn('Auto Supabase sync skipped:', err);
-            });
+        try {
+          // Reconcile with Supabase Storage:
+          // Photos, videos, and audios are stored in Supabase.
+          // If media was deleted from Supabase, exclude from UI display AND delete from Firestore!
+          const validList = await reconcileMemoriesWithSupabase(firestoreList);
+          setMemories(validList);
+        } catch {
+          setMemories(firestoreList);
+        } finally {
+          setDataLoading(false);
         }
       },
       (err) => {
@@ -454,40 +434,20 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const syncSupabaseStorage = useCallback(async () => {
     try {
-      const count = await syncOrphanedSupabaseMemories(
-        memories,
-        (recoveredItems) => {
-          if (recoveredItems.length > 0) {
-            setMemories((prev) => {
-              const existingIds = new Set(prev.map((m) => m.id));
-              const merged = [
-                ...prev,
-                ...recoveredItems.filter((r) => !existingIds.has(r.id)),
-              ];
-              return merged.sort((a, b) =>
-                b.memoryDate.localeCompare(a.memoryDate)
-              );
-            });
-          }
-        }
-      );
-      if (count > 0) {
-        addToast(
-          `Synced ${count} ${count === 1 ? 'memory' : 'memories'} from Supabase Storage`,
-          'success'
-        );
-      } else {
-        addToast(
-          'All Supabase Storage files are already synced and up to date',
-          'info'
-        );
-      }
+      const valid = await reconcileMemoriesWithSupabase(memories);
+      setMemories(valid);
+      addToast('Storage reconciled with Supabase', 'success');
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : 'Could not sync Supabase files.';
       addToast('Supabase sync error', 'error', msg);
     }
   }, [memories, addToast]);
+
+  const pruneMemory = useCallback(async (memoryId: string) => {
+    setMemories((prev) => prev.filter((m) => m.id !== memoryId));
+    await pruneDeletedSupabaseMemory(memoryId);
+  }, []);
 
   const patchLocalMemory = useCallback(
     (memoryId: string, updates: Partial<MemoryItem>) => {
@@ -606,6 +566,7 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
         signInWithGoogle,
         signOutUser,
         syncSupabaseStorage,
+        pruneMemory,
         patchLocalMemory,
         upsertLocalMemory,
         removeLocalMemory,

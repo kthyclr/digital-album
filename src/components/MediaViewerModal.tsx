@@ -350,8 +350,21 @@ export const MediaViewerModal: React.FC<{
                   Photo file is no longer in Supabase storage
                 </p>
                 <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto">
-                  The original image file was removed from storage. The title, date, notes, and tags remain in your album until you move this memory to Trash or delete it.
+                  The original image file was removed from storage.
                 </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await permanentlyDeleteMemory(memory);
+                      onClose();
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium border border-rose-600 bg-rose-600 text-white hover:bg-rose-700 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete Orphaned Record from Firebase
+                  </button>
+                </div>
               </div>
             )
           ) : memory.mediaType === 'video' ? (

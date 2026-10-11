@@ -8,6 +8,7 @@ import {
   LogOut,
   Save,
   Cake,
+  RefreshCw,
 } from 'lucide-react';
 import { useCouple } from '../context/CoupleContext';
 import { SectionHeader } from '../components/SharedUI';
@@ -31,6 +32,7 @@ export const SettingsSection: React.FC = () => {
     bucketItems,
     addToast,
     signOutUser,
+    syncSupabaseStorage,
     patchLocalCoupleConfig,
     patchLocalUserPrefs,
   } = useCouple();
@@ -61,7 +63,6 @@ export const SettingsSection: React.FC = () => {
     coupleConfig.partnerTwoBirthday || ''
   );
   const [timezone, setTimezone] = useState(coupleConfig.timezone);
-  const [logoUrl, setLogoUrl] = useState(coupleConfig.logoUrl || '');
   const [maxFileSizeMB, setMaxFileSizeMB] = useState(
     coupleConfig.maxFileSizeMB
   );
@@ -83,7 +84,6 @@ export const SettingsSection: React.FC = () => {
     setPartnerOneBirthday(coupleConfig.partnerOneBirthday || '');
     setPartnerTwoBirthday(coupleConfig.partnerTwoBirthday || '');
     setTimezone(coupleConfig.timezone);
-    setLogoUrl(coupleConfig.logoUrl || '');
     setMaxFileSizeMB(coupleConfig.maxFileSizeMB);
     setTrashRetentionDays(coupleConfig.trashRetentionDays);
   }, [coupleConfig]);
@@ -122,7 +122,7 @@ export const SettingsSection: React.FC = () => {
       partnerOneBirthday,
       partnerTwoBirthday,
       timezone,
-      logoUrl: logoUrl || coupleConfig.logoUrl || DEFAULT_COUPLE_CONFIG.logoUrl,
+      logoUrl: '',
       maxFileSizeMB,
       trashRetentionDays,
     };
@@ -652,6 +652,14 @@ export const SettingsSection: React.FC = () => {
             </p>
 
             <div className="flex flex-wrap gap-2.5">
+              <button
+                type="button"
+                onClick={syncSupabaseStorage}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-primary)] hover:bg-[var(--paper-blue)] cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Reconcile Supabase Storage
+              </button>
               <button
                 type="button"
                 onClick={handleExportJson}
