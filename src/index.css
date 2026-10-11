@@ -80,31 +80,65 @@
 /* Scrapbook utility classes matching Variation 14 */
 .scrapbook-card {
   background-color: var(--bg-surface);
-  border: 3px solid var(--ink);
-  border-radius: 36px;
-  box-shadow: var(--card-shadow);
+  border: 2.5px solid var(--ink);
+  border-radius: 26px;
+  box-shadow: 6px 6px 0 rgba(50, 45, 41, 0.1);
+}
+
+@media (min-width: 640px) {
+  .scrapbook-card {
+    border: 3px solid var(--ink);
+    border-radius: 36px;
+    box-shadow: var(--card-shadow);
+  }
 }
 
 .scrapbook-card-sm {
   background-color: var(--bg-surface);
-  border: 2.5px solid var(--ink);
-  border-radius: 28px;
-  box-shadow: 8px 8px 0 var(--ink-faint);
+  border: 2px solid var(--ink);
+  border-radius: 22px;
+  box-shadow: 6px 6px 0 var(--ink-faint);
+}
+
+@media (min-width: 640px) {
+  .scrapbook-card-sm {
+    border: 2.5px solid var(--ink);
+    border-radius: 28px;
+    box-shadow: 8px 8px 0 var(--ink-faint);
+  }
 }
 
 .scrapbook-pill {
   font-family: 'Space Mono', monospace;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   background-color: var(--paper-blue);
-  padding: 0.45rem 1rem;
+  padding: 0.35rem 0.75rem;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   border: 1.5px solid var(--ink);
   color: var(--ink);
+  max-width: 100%;
+}
+
+@media (min-width: 640px) {
+  .scrapbook-pill {
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    padding: 0.45rem 1rem;
+    gap: 0.5rem;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .scrapbook-btn-primary {
@@ -112,9 +146,15 @@
   color: var(--bg-canvas);
   font-family: 'Inter', sans-serif;
   font-weight: 600;
-  border-radius: 20px;
+  border-radius: 16px;
   border: 2px solid var(--ink);
   transition: background-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+@media (min-width: 640px) {
+  .scrapbook-btn-primary {
+    border-radius: 20px;
+  }
 }
 
 .scrapbook-btn-primary:hover {

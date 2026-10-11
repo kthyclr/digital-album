@@ -123,7 +123,7 @@ export const LingKongSection: React.FC<{
           onAction={onOpenUploadLingKong}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 items-start">
           {filteredItems.map((mem) => (
             <div key={mem.id} className="space-y-1.5">
               {mem.lingKongLabel && (

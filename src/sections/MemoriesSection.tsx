@@ -581,8 +581,8 @@ export const MemoriesSection: React.FC<{
       )}
 
       {/* Search, Filters & Sort Toolbar */}
-      <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] space-y-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 sm:gap-3">
           {/* Search Input */}
           <div className="md:col-span-4 relative">
             <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
@@ -596,13 +596,13 @@ export const MemoriesSection: React.FC<{
           </div>
 
           {/* Media Type Segmented Filter */}
-          <div className="md:col-span-4 flex items-center gap-1 p-1 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-hairline)]">
+          <div className="md:col-span-4 flex items-center gap-1 p-1 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-hairline)] overflow-x-auto no-scrollbar">
             {(['all', 'photo', 'video', 'audio'] as const).map((type) => (
               <button
                 key={type}
                 type="button"
                 onClick={() => setSelectedMediaType(type)}
-                className={`flex-1 py-1.5 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                className={`flex-1 py-1.5 px-2 sm:px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                   selectedMediaType === type
                     ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -660,7 +660,7 @@ export const MemoriesSection: React.FC<{
         </div>
 
         {/* Secondary Filter Row: Year, Month, Tag, Favorites, Clear All */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[var(--border-hairline)]">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2.5 border-t border-[var(--border-hairline)]">
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={selectedYear}
@@ -789,7 +789,7 @@ export const MemoriesSection: React.FC<{
         />
       ) : sortBy === 'date-desc' || sortBy === 'date-asc' ? (
         /* Month/Year Chronological Sections */
-        <div className="space-y-10">
+        <div className="space-y-8 sm:space-y-10">
           {groupedByMonthYear.map((group) => (
             <section key={group.key} className="space-y-4">
               <div className="flex items-center justify-between border-b border-[var(--border-hairline)] pb-2">
@@ -803,7 +803,7 @@ export const MemoriesSection: React.FC<{
               </div>
 
               {viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 items-start">
                   {group.items.map((mem) => (
                     <MemoryCard
                       key={mem.id}
@@ -841,7 +841,7 @@ export const MemoriesSection: React.FC<{
           ))}
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 items-start">
           {paginatedMemories.map((mem) => (
             <MemoryCard
               key={mem.id}

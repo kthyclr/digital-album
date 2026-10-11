@@ -137,12 +137,12 @@ const AuthenticatedShell: React.FC = () => {
     <div className="min-h-screen flex flex-col text-[var(--ink)]">
       {/* Variation 14 Scrapbook Top Bar */}
       <header className="sticky top-0 z-30 bg-[var(--bg-canvas)]/95 backdrop-blur-xs border-b-2 border-dashed border-[var(--ink-faint)]">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-10 py-4 flex items-center justify-between gap-8">
+        <div className="max-w-[1440px] mx-auto px-3.5 sm:px-8 lg:px-10 py-2.5 sm:py-3.5 flex items-center justify-between gap-3 sm:gap-8">
           {/* Zone 1: Gaegu Wordmark */}
           <button
             type="button"
             onClick={() => handleNavigate('home')}
-            className="font-gaegu text-4xl sm:text-5xl leading-[0.8] tracking-[-0.04em] font-bold text-[var(--ink)] whitespace-nowrap shrink-0 cursor-pointer"
+            className="font-gaegu text-3xl sm:text-4xl lg:text-5xl leading-[0.85] tracking-[-0.04em] font-bold text-[var(--ink)] truncate max-w-[190px] sm:max-w-none shrink-0 cursor-pointer text-left"
           >
             {coupleConfig.affectionateLabelOne} &amp;{' '}
             {coupleConfig.affectionateLabelTwo}
@@ -170,26 +170,27 @@ const AuthenticatedShell: React.FC = () => {
           </nav>
 
           {/* Zone 3: Primary Action + Mobile Drawer Toggle */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => handleOpenUpload()}
-              className="scrapbook-btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-xs whitespace-nowrap shrink-0 cursor-pointer"
+              className="scrapbook-btn-primary inline-flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 text-xs whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Upload className="w-3.5 h-3.5" />
-              <span>Upload Memory</span>
+              <Upload className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden xs:inline sm:inline">Upload Memory</span>
+              <span className="xs:hidden sm:hidden">Upload</span>
             </button>
 
             <button
               type="button"
               onClick={() => setMobileMenuOpen((o) => !o)}
               aria-label="Toggle navigation menu"
-              className="md:hidden p-2 rounded-2xl border-2 border-[var(--ink)] bg-[var(--bg-surface)] text-[var(--ink)] cursor-pointer"
+              className="md:hidden p-2 rounded-xl border-2 border-[var(--ink)] bg-[var(--bg-surface)] text-[var(--ink)] cursor-pointer"
             >
               {mobileMenuOpen ? (
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               ) : (
-                <Menu className="w-5 h-5" />
+                <Menu className="w-4 h-4" />
               )}
             </button>
           </div>
@@ -198,8 +199,8 @@ const AuthenticatedShell: React.FC = () => {
 
       {/* Secondary Section Ribbon for All 8 Scrapbook Tabs */}
       <div className="border-b-2 border-dashed border-[var(--ink-faint)] bg-[var(--bg-surface)]/60">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-10 py-3 flex items-center justify-between gap-4 overflow-x-auto">
-          <div className="flex items-center gap-2">
+        <div className="max-w-[1440px] mx-auto px-3 sm:px-8 lg:px-10 py-2 sm:py-2.5 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeSection === item.id;
@@ -208,14 +209,15 @@ const AuthenticatedShell: React.FC = () => {
                   key={item.id}
                   type="button"
                   onClick={() => handleNavigate(item.id)}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-space-mono text-[11px] uppercase tracking-wider border-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                  className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full font-space-mono text-[10px] sm:text-[11px] uppercase tracking-wider border-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                     isActive
                       ? 'bg-[var(--paper-blue)] text-[var(--ink)] border-[var(--ink)] font-bold'
                       : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--ink)] hover:bg-[var(--bg-surface)]'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5 text-[var(--accent)]" />
-                  <span>{item.label}</span>
+                  <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[var(--accent)] shrink-0" />
+                  <span className="sm:hidden">{item.shortLabel}</span>
+                  <span className="hidden sm:inline">{item.label}</span>
                 </button>
               );
             })}
@@ -230,7 +232,7 @@ const AuthenticatedShell: React.FC = () => {
 
       {/* Collapsible Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[var(--bg-surface)] border-b-3 border-[var(--ink)] px-4 py-4 space-y-2">
+        <div className="md:hidden bg-[var(--bg-surface)] border-b-2 border-[var(--ink)] px-3.5 py-3 grid grid-cols-2 gap-2">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
@@ -239,14 +241,14 @@ const AuthenticatedShell: React.FC = () => {
                 key={item.id}
                 type="button"
                 onClick={() => handleNavigate(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-space-mono text-xs uppercase tracking-wider text-left cursor-pointer border-2 ${
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-space-mono text-[11px] uppercase tracking-wider text-left cursor-pointer border-2 ${
                   isActive
                     ? 'bg-[var(--paper-blue)] border-[var(--ink)] font-bold'
-                    : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--paper-pink)]'
+                    : 'border-[var(--ink-faint)] text-[var(--text-secondary)] hover:bg-[var(--paper-pink)]'
                 }`}
               >
-                <Icon className="w-4 h-4 text-[var(--accent)]" />
-                <span>{item.label}</span>
+                <Icon className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
+                <span className="truncate">{item.shortLabel}</span>
               </button>
             );
           })}
@@ -254,7 +256,7 @@ const AuthenticatedShell: React.FC = () => {
       )}
 
       {/* Main Content Container */}
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-10 py-8 md:py-10">
+      <main className="flex-1 w-full max-w-[1440px] mx-auto px-3.5 sm:px-8 lg:px-10 py-5 sm:py-8">
         {activeSection === 'home' && (
           <HomeSection
             onNavigate={handleNavigate}
@@ -303,15 +305,15 @@ const AuthenticatedShell: React.FC = () => {
       </main>
 
       {/* Variation 14 Dashed Space Mono Footer */}
-      <footer className="w-full border-t-2 border-dashed border-[var(--ink-faint)] mt-16">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-10 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 font-space-mono text-[0.65rem] uppercase tracking-[0.1em] opacity-60">
+      <footer className="w-full border-t-2 border-dashed border-[var(--ink-faint)] mt-8 sm:mt-14">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-10 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 font-space-mono text-[0.65rem] uppercase tracking-[0.1em] opacity-60 text-center sm:text-left">
           <div>
             <span>
               {coupleConfig.displayName} · {coupleConfig.partnerOneName} &amp;{' '}
               {coupleConfig.partnerTwoName}
             </span>
           </div>
-          <div className="flex items-center gap-5">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
             <button
               type="button"
               onClick={() => handleNavigate('memories')}

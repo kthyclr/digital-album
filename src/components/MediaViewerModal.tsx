@@ -285,25 +285,25 @@ export const MediaViewerModal: React.FC<{
       role="dialog"
       aria-modal="true"
       aria-label={`Memory viewer: ${memory.title || 'Untitled'}`}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-2 sm:p-6 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-2.5 sm:p-6 overflow-y-auto"
     >
-      <div className="w-full max-w-6xl rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 max-h-[92vh]">
+      <div className="w-full max-w-6xl rounded-2xl sm:rounded-3xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 max-h-[92vh] overflow-y-auto lg:overflow-hidden">
         {/* Left/Top Media Stage */}
-        <div className="lg:col-span-7 bg-black/95 relative flex flex-col items-center justify-center min-h-[320px] lg:min-h-[540px] p-4 overflow-hidden">
+        <div className="lg:col-span-7 bg-[var(--bg-subtle)] dark:bg-black/90 relative flex flex-col items-center justify-center p-3 sm:p-6 pt-12 sm:pt-14 border-b lg:border-b-0 lg:border-r border-[var(--border-hairline)]">
           {/* Top Viewer Controls */}
-          <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
-            <span className="text-xs text-white/80 font-mono-tabular px-2.5 py-1 rounded bg-black/50">
+          <div className="absolute top-2.5 left-3 right-3 flex items-center justify-between z-10">
+            <span className="text-xs text-white font-mono-tabular px-2.5 py-1 rounded-lg bg-black/70">
               {currentIndex >= 0
                 ? `${currentIndex + 1} / ${memoriesList.length}`
                 : memory.mediaType.toUpperCase()}
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {memory.mediaType === 'photo' && displayMediaUrl && (
                 <button
                   type="button"
                   onClick={() => setZoomed((z) => !z)}
                   aria-label={zoomed ? 'Zoom out' : 'Zoom in'}
-                  className="p-2 rounded-lg bg-black/60 text-white hover:bg-black/80 cursor-pointer"
+                  className="p-2 rounded-lg bg-black/70 text-white hover:bg-black/85 cursor-pointer"
                 >
                   {zoomed ? (
                     <ZoomOut className="w-4 h-4" />
@@ -316,51 +316,53 @@ export const MediaViewerModal: React.FC<{
                 type="button"
                 onClick={onClose}
                 aria-label="Close media viewer"
-                className="p-2 rounded-lg bg-black/60 text-white hover:bg-black/80 cursor-pointer"
+                className="p-2 rounded-lg bg-black/70 text-white hover:bg-black/85 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* Media Rendering */}
+          {/* Media Rendering: Frame matches the picture/video dimensions with clean padding */}
           {memory.mediaType === 'photo' ? (
             displayMediaUrl ? (
-              <div className="w-full h-full flex items-center justify-center overflow-auto">
+              <div className="inline-flex items-center justify-center p-2 sm:p-3 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink-faint)] max-w-full overflow-auto">
                 <img
                   src={displayMediaUrl}
                   alt={memory.altText || memory.title || 'Memory photograph'}
                   referrerPolicy="no-referrer"
-                  className={`transition-transform duration-200 ${
+                  className={`block rounded-xl transition-transform duration-200 ${
                     zoomed
                       ? 'scale-150 cursor-zoom-out'
-                      : 'max-h-[75vh] w-auto object-contain cursor-zoom-in'
+                      : 'w-auto h-auto max-w-full max-h-[50vh] lg:max-h-[72vh] object-contain cursor-zoom-in'
                   }`}
                   onClick={() => setZoomed((z) => !z)}
                 />
               </div>
             ) : (
-              <p className="text-xs text-white/70">
+              <p className="text-xs text-[var(--text-muted)] py-8">
                 Image preview unavailable.
               </p>
             )
           ) : memory.mediaType === 'video' ? (
             displayMediaUrl ? (
-              <video
-                src={displayMediaUrl}
-                controls
-                playsInline
-                className="max-h-[75vh] w-full object-contain rounded-lg"
-              >
-                Your browser does not support playback of this video format.
-              </video>
+              <div className="inline-flex items-center justify-center p-2 sm:p-3 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink-faint)] max-w-full">
+                <video
+                  src={displayMediaUrl}
+                  controls
+                  playsInline
+                  className="block w-auto h-auto max-w-full max-h-[50vh] lg:max-h-[72vh] object-contain rounded-xl bg-black"
+                >
+                  Your browser does not support playback of this video format.
+                </video>
+              </div>
             ) : (
-              <p className="text-xs text-white/70">
+              <p className="text-xs text-[var(--text-muted)] py-8">
                 Video file unavailable or unsupported.
               </p>
             )
           ) : (
-            <div className="w-full max-w-md p-8 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-primary)] space-y-5 text-center">
+            <div className="w-full max-w-md p-6 sm:p-8 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] text-[var(--text-primary)] space-y-4 text-center">
               <h3 className="text-xl font-serif-editorial font-semibold">
                 {memory.title || 'Audio Memory'}
               </h3>
@@ -395,7 +397,7 @@ export const MediaViewerModal: React.FC<{
               type="button"
               onClick={() => onSelectMemory(memoriesList[currentIndex - 1])}
               aria-label="Previous memory"
-              className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 text-white hover:bg-black/80 cursor-pointer"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/70 text-white hover:bg-black/85 cursor-pointer"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -405,7 +407,7 @@ export const MediaViewerModal: React.FC<{
               type="button"
               onClick={() => onSelectMemory(memoriesList[currentIndex + 1])}
               aria-label="Next memory"
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 text-white hover:bg-black/80 cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/70 text-white hover:bg-black/85 cursor-pointer"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -413,7 +415,7 @@ export const MediaViewerModal: React.FC<{
         </div>
 
         {/* Right/Bottom Metadata & Edit Drawer */}
-        <div className="lg:col-span-5 flex flex-col justify-between p-6 overflow-y-auto max-h-[85vh]">
+        <div className="lg:col-span-5 flex flex-col justify-between p-4 sm:p-6 lg:overflow-y-auto lg:max-h-[90vh]">
           {!isEditing ? (
             <div className="space-y-6">
               <div className="flex items-start justify-between gap-4 border-b border-[var(--border-hairline)] pb-4">

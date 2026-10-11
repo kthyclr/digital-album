@@ -344,14 +344,14 @@ export const StorySection: React.FC<{
             onSecondaryAction={onOpenUpload}
           />
         ) : (
-          <div className="space-y-10">
+          <div className="space-y-6 sm:space-y-8">
             {timelineGroups.map((group) => (
               <div
                 key={group.dateIso}
-                className="p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] space-y-5"
+                className="p-4 sm:p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] space-y-4 sm:space-y-5"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[var(--border-hairline)]">
-                  <h2 className="text-2xl font-serif-editorial font-semibold text-[var(--text-primary)]">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 sm:pb-3 border-b border-[var(--border-hairline)]">
+                  <h2 className="text-xl sm:text-2xl font-serif-editorial font-semibold text-[var(--text-primary)]">
                     {formatReadableDate(group.dateIso)}
                   </h2>
                   <span className="text-xs text-[var(--text-muted)] font-mono-tabular">
@@ -377,9 +377,9 @@ export const StorySection: React.FC<{
                   return (
                     <div
                       key={ms.id}
-                      className="p-5 rounded-xl bg-[var(--bg-powder-pink)]/45 border border-[var(--border-hairline)] space-y-3"
+                      className="p-4 sm:p-5 rounded-xl bg-[var(--bg-powder-pink)]/45 border border-[var(--border-hairline)] space-y-2.5"
                     >
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
                           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent-pink)]">
                             {ms.category === 'Birthday' ? (
@@ -389,12 +389,12 @@ export const StorySection: React.FC<{
                             )}
                             <span>{ms.category || 'Milestone'}</span>
                           </span>
-                          <h3 className="text-xl font-serif-editorial font-semibold text-[var(--text-primary)]">
+                          <h3 className="text-lg sm:text-xl font-serif-editorial font-semibold text-[var(--text-primary)]">
                             {ms.title}
                           </h3>
                         </div>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
                             type="button"
                             onClick={() => handleOpenMilestoneModal(ms)}
@@ -415,23 +415,23 @@ export const StorySection: React.FC<{
                       </div>
 
                       {ms.description && (
-                        <p className="text-sm text-[var(--text-secondary)] whitespace-pre-line leading-relaxed">
+                        <p className="text-xs sm:text-sm text-[var(--text-secondary)] whitespace-pre-line leading-relaxed">
                           {ms.description}
                         </p>
                       )}
 
                       {linkedMemories.length > 0 && (
-                        <div className="pt-2 space-y-2">
+                        <div className="pt-2 space-y-1.5">
                           <p className="text-xs font-medium text-[var(--text-muted)]">
                             Linked Memories:
                           </p>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-1.5">
                             {linkedMemories.map((lm) => (
                               <button
                                 key={lm.id}
                                 type="button"
                                 onClick={() => onOpenMemory(lm)}
-                                className="px-3 py-1.5 rounded-lg text-xs bg-[var(--bg-surface)] border border-[var(--border-hairline)] hover:border-[var(--accent-blue)] cursor-pointer"
+                                className="px-2.5 py-1.5 rounded-lg text-xs bg-[var(--bg-surface)] border border-[var(--border-hairline)] hover:border-[var(--accent-blue)] cursor-pointer"
                               >
                                 Open: {lm.title || lm.originalFileName}
                               </button>
@@ -445,7 +445,7 @@ export const StorySection: React.FC<{
 
                 {/* Memories on this date */}
                 {group.memories.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
                     {group.memories.map((mem) => (
                       <MemoryCard
                         key={mem.id}
@@ -463,16 +463,16 @@ export const StorySection: React.FC<{
         )
       ) : (
         /* Calendar View */
-        <div className="space-y-6">
-          <div className="p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-serif-editorial font-semibold">
+        <div className="space-y-5">
+          <div className="p-3.5 sm:p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] space-y-4 sm:space-y-6">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-xl sm:text-2xl font-serif-editorial font-semibold">
                 {calendarMonth.toLocaleDateString('en-US', {
                   month: 'long',
                   year: 'numeric',
                 })}
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
                   onClick={() =>
@@ -492,7 +492,7 @@ export const StorySection: React.FC<{
                 <button
                   type="button"
                   onClick={() => setCalendarMonth(new Date())}
-                  className="px-3 py-1.5 rounded-lg text-xs border border-[var(--border-hairline)] hover:bg-[var(--bg-subtle)] cursor-pointer"
+                  className="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs border border-[var(--border-hairline)] hover:bg-[var(--bg-subtle)] cursor-pointer"
                 >
                   Today
                 </button>
@@ -515,7 +515,7 @@ export const StorySection: React.FC<{
               </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-[var(--text-muted)]">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center text-[11px] sm:text-xs font-medium text-[var(--text-muted)]">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
                 <div key={d} className="py-1">
                   {d}
@@ -523,13 +523,13 @@ export const StorySection: React.FC<{
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
               {calendarDays.map((cell, idx) => {
                 if (cell.dayNum === null) {
                   return (
                     <div
                       key={`empty-${idx}`}
-                      className="h-20 rounded-xl bg-[var(--bg-subtle)]/30"
+                      className="h-14 sm:h-20 rounded-xl bg-[var(--bg-subtle)]/30"
                     />
                   );
                 }
@@ -545,7 +545,7 @@ export const StorySection: React.FC<{
                     onClick={() =>
                       setSelectedDayIso(isSelected ? '' : cell.isoDate)
                     }
-                    className={`h-22 p-2 rounded-xl border text-left flex flex-col justify-between transition-colors cursor-pointer relative ${
+                    className={`h-14 sm:h-22 p-1.5 sm:p-2 rounded-xl border text-left flex flex-col justify-between transition-colors cursor-pointer relative ${
                       isSelected
                         ? 'border-[var(--accent-blue)] bg-[var(--bg-powder-blue)]'
                         : hasBirthday
@@ -556,11 +556,11 @@ export const StorySection: React.FC<{
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <span className="text-xs font-mono-tabular font-semibold">
+                      <span className="text-[11px] sm:text-xs font-mono-tabular font-semibold">
                         {cell.dayNum}
                       </span>
                       {hasBirthday && (
-                        <span className="text-xs" role="img" aria-label="birthday">
+                        <span className="text-[11px] sm:text-xs" role="img" aria-label="birthday">
                           🎂
                         </span>
                       )}
@@ -568,19 +568,24 @@ export const StorySection: React.FC<{
 
                     <div className="space-y-0.5 w-full overflow-hidden">
                       {hasBirthday && (
-                        <div className="text-[9px] font-space-mono text-[var(--accent)] font-bold truncate">
+                        <div className="hidden sm:block text-[9px] font-space-mono text-[var(--accent)] font-bold truncate">
                           {cell.birthdayLabels.join(' & ')}
                         </div>
                       )}
                       {hasItems && (
-                        <div className="text-[10px] text-[var(--accent-blue)] font-medium truncate">
-                          {cell.memories.length > 0 &&
-                            `${cell.memories.length} mem`}
-                          {cell.memories.length > 0 &&
-                            cell.milestones.length > 0 &&
-                            ' · '}
-                          {cell.milestones.length > 0 &&
-                            `${cell.milestones.length} ms`}
+                        <div className="text-[9px] sm:text-[10px] text-[var(--accent-blue)] font-medium truncate">
+                          <span className="sm:hidden">
+                            {cell.memories.length + cell.milestones.length}●
+                          </span>
+                          <span className="hidden sm:inline">
+                            {cell.memories.length > 0 &&
+                              `${cell.memories.length} mem`}
+                            {cell.memories.length > 0 &&
+                              cell.milestones.length > 0 &&
+                              ' · '}
+                            {cell.milestones.length > 0 &&
+                              `${cell.milestones.length} ms`}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -591,9 +596,9 @@ export const StorySection: React.FC<{
           </div>
 
           {selectedDayIso && (
-            <div className="p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] space-y-4">
+            <div className="p-4 sm:p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-serif-editorial font-semibold">
+                <h3 className="text-lg sm:text-xl font-serif-editorial font-semibold">
                   Entries on {formatReadableDate(selectedDayIso)}
                 </h3>
                 <button
@@ -606,7 +611,7 @@ export const StorySection: React.FC<{
               </div>
 
               {selectedDayEntries.birthdayLabels.length > 0 && (
-                <div className="p-4 rounded-xl bg-[var(--paper-pink)] border-2 border-[var(--ink)] flex items-center justify-between gap-3">
+                <div className="p-3.5 sm:p-4 rounded-xl bg-[var(--paper-pink)] border-2 border-[var(--ink)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl" role="img" aria-label="birthday cake">
                       🎂
@@ -631,7 +636,7 @@ export const StorySection: React.FC<{
                       setMLinkedIds([]);
                       setMilestoneModalOpen(true);
                     }}
-                    className="scrapbook-btn-primary px-3 py-1.5 text-[11px] cursor-pointer whitespace-nowrap"
+                    className="scrapbook-btn-primary px-3 py-1.5 text-[11px] cursor-pointer whitespace-nowrap self-start sm:self-auto"
                   >
                     + Add Birthday Note
                   </button>
@@ -665,7 +670,7 @@ export const StorySection: React.FC<{
                   ))}
 
                   {selectedDayEntries.memories.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
                       {selectedDayEntries.memories.map((mem) => (
                         <MemoryCard
                           key={mem.id}

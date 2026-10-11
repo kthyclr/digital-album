@@ -160,28 +160,28 @@ export const SectionHeader: React.FC<{
   actions?: React.ReactNode;
 }> = ({ kicker, title, subtitle, actions }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b-2 border-dashed border-[var(--ink-faint)]">
-      <div className="space-y-2">
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3.5 sm:gap-4 pb-4 sm:pb-5 border-b-2 border-dashed border-[var(--ink-faint)]">
+      <div className="space-y-1.5 sm:space-y-2">
         {kicker && (
           <div className="scrapbook-pill">
             <span>★</span>
-            <span>{kicker}</span>
+            <span className="truncate">{kicker}</span>
           </div>
         )}
         <h1
-          className="text-4xl md:text-5xl font-gaegu font-bold leading-none text-[var(--ink)]"
+          className="text-3xl sm:text-4xl md:text-5xl font-gaegu font-bold leading-none text-[var(--ink)]"
           style={{ textWrap: 'balance' }}
         >
           {title}
         </h1>
         {subtitle && (
-          <p className="text-sm text-[var(--text-secondary)] max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-2xl leading-relaxed">
             {subtitle}
           </p>
         )}
       </div>
       {actions && (
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {actions}
         </div>
       )}
@@ -208,23 +208,23 @@ export const EmptyStatePanel: React.FC<{
   onSecondaryAction,
 }) => {
   return (
-    <div className="p-8 md:p-12 scrapbook-card text-center max-w-2xl mx-auto my-6 space-y-5 relative">
-      <div className="w-12 h-12 mx-auto rounded-2xl bg-[var(--paper-blue)] border-2 border-[var(--ink)] text-[var(--ink)] flex items-center justify-center">
+    <div className="p-6 sm:p-10 scrapbook-card text-center max-w-2xl mx-auto my-4 sm:my-6 space-y-4 relative">
+      <div className="w-11 h-11 mx-auto rounded-2xl bg-[var(--paper-blue)] border-2 border-[var(--ink)] text-[var(--ink)] flex items-center justify-center">
         <Sparkles className="w-5 h-5 text-[var(--accent)]" />
       </div>
-      <h3 className="text-4xl font-gaegu font-bold text-[var(--ink)] leading-none">
+      <h3 className="text-3xl sm:text-4xl font-gaegu font-bold text-[var(--ink)] leading-none">
         {title}
       </h3>
-      <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
+      <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
         {description}
       </p>
       {(actionLabel || secondaryLabel) && (
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+        <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
           {actionLabel && onAction && (
             <button
               type="button"
               onClick={onAction}
-              className="scrapbook-btn-primary px-6 py-3 text-xs cursor-pointer whitespace-nowrap shrink-0"
+              className="scrapbook-btn-primary px-5 sm:px-6 py-2.5 sm:py-3 text-xs cursor-pointer whitespace-nowrap shrink-0"
             >
               {actionLabel}
             </button>
@@ -233,7 +233,7 @@ export const EmptyStatePanel: React.FC<{
             <button
               type="button"
               onClick={onSecondaryAction}
-              className="px-5 py-3 rounded-2xl text-xs font-semibold border-2 border-[var(--ink)] bg-[var(--paper-pink)] text-[var(--ink)] hover:bg-[var(--accent)] hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              className="px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-semibold border-2 border-[var(--ink)] bg-[var(--paper-pink)] text-[var(--ink)] hover:bg-[var(--accent)] hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
             >
               {secondaryLabel}
             </button>
@@ -246,6 +246,7 @@ export const EmptyStatePanel: React.FC<{
 
 /**
  * Media Card Component — Variation 14 Tactile Scrapbook Frame
+ * Frames naturally hug the actual length & width of each picture/video with clean padding.
  */
 export const MemoryCard: React.FC<{
   memory: MemoryItem;
@@ -295,25 +296,29 @@ export const MemoryCard: React.FC<{
 
   if (viewMode === 'list') {
     return (
-      <div className="group flex items-center justify-between gap-4 p-4 rounded-3xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] shadow-[6px_6px_0_var(--ink-faint)] transition-transform duration-150 hover:-translate-y-0.5">
+      <div className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] shadow-[5px_5px_0_var(--ink-faint)] transition-transform duration-150 hover:-translate-y-0.5">
         <button
           type="button"
           onClick={() => onOpen(memory)}
-          className="flex items-center gap-4 flex-1 min-w-0 text-left cursor-pointer"
+          className="flex items-center gap-3.5 flex-1 min-w-0 text-left cursor-pointer"
         >
-          <div className="w-16 h-16 rounded-2xl bg-[var(--paper-blue)] overflow-hidden shrink-0 flex items-center justify-center border-2 border-[var(--ink)]">
+          <div className="p-1.5 rounded-xl bg-[var(--paper-blue)] shrink-0 flex items-center justify-center border-2 border-[var(--ink)]">
             {memory.mediaType === 'photo' && displayUrl ? (
               <img
                 src={displayUrl}
                 alt={memory.altText || memory.title || 'Memory photo'}
                 loading="lazy"
                 referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
+                className="block w-auto h-auto max-w-[64px] max-h-[64px] rounded-lg object-contain"
               />
             ) : memory.mediaType === 'video' ? (
-              <Film className="w-6 h-6 text-[var(--accent)]" />
+              <div className="w-12 h-12 flex items-center justify-center">
+                <Film className="w-6 h-6 text-[var(--accent)]" />
+              </div>
             ) : (
-              <Music className="w-6 h-6 text-[var(--ink)]" />
+              <div className="w-12 h-12 flex items-center justify-center">
+                <Music className="w-6 h-6 text-[var(--ink)]" />
+              </div>
             )}
           </div>
 
@@ -349,7 +354,7 @@ export const MemoryCard: React.FC<{
           </div>
         </button>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center justify-end gap-1.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-dashed border-[var(--ink-faint)]">
           {!isTrashed && onToggleFeatured && (
             <button
               type="button"
@@ -367,7 +372,7 @@ export const MemoryCard: React.FC<{
                   ? 'Clear Featured Memory on Home'
                   : 'Set as Featured Memory on Home'
               }
-              className={`p-2.5 rounded-2xl border-2 border-[var(--ink)] transition-transform duration-150 active:scale-95 cursor-pointer ${
+              className={`p-2 rounded-xl border-2 border-[var(--ink)] transition-transform duration-150 active:scale-95 cursor-pointer ${
                 isFeatured
                   ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-500'
                   : 'bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-amber-50 hover:text-amber-500'
@@ -390,7 +395,7 @@ export const MemoryCard: React.FC<{
               }}
               aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
               title={isFav ? 'Remove from favorites' : 'Add to favorites'}
-              className={`p-2.5 rounded-2xl border-2 border-[var(--ink)] transition-transform duration-150 active:scale-95 cursor-pointer ${
+              className={`p-2 rounded-xl border-2 border-[var(--ink)] transition-transform duration-150 active:scale-95 cursor-pointer ${
                 isFav
                   ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-600'
                   : 'bg-[var(--paper-pink)] text-[var(--ink)] hover:bg-rose-100 hover:text-rose-600'
@@ -413,7 +418,7 @@ export const MemoryCard: React.FC<{
               }}
               aria-label={isTrashed ? 'Restore from Trash' : 'Move to Trash'}
               title={isTrashed ? 'Restore from Trash' : 'Move to Trash'}
-              className="p-2.5 rounded-2xl border-2 border-[var(--ink)] bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-rose-50 hover:text-rose-600 transition-transform duration-150 active:scale-95 cursor-pointer"
+              className="p-2 rounded-xl border-2 border-[var(--ink)] bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-rose-50 hover:text-rose-600 transition-transform duration-150 active:scale-95 cursor-pointer"
             >
               {isTrashed ? (
                 <RotateCcw className="w-4 h-4" />
@@ -432,7 +437,7 @@ export const MemoryCard: React.FC<{
               }}
               aria-label="Delete Permanently"
               title="Delete Permanently"
-              className="p-2.5 rounded-2xl border-2 border-rose-600 bg-rose-600 text-white hover:bg-rose-700 transition-transform duration-150 active:scale-95 cursor-pointer"
+              className="p-2 rounded-xl border-2 border-rose-600 bg-rose-600 text-white hover:bg-rose-700 transition-transform duration-150 active:scale-95 cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -442,138 +447,160 @@ export const MemoryCard: React.FC<{
     );
   }
 
-  // Grid Card View — Scrapbook Polaroid Card
+  // Grid Card View — Scrapbook Polaroid Frame proportional to the picture/video
   return (
-    <article className="group flex flex-col scrapbook-card-sm overflow-hidden transition-transform duration-150 hover:-translate-y-1">
-      <div className="relative w-full aspect-[4/3] bg-[var(--paper-blue)] border-b-2 border-[var(--ink)] overflow-hidden flex items-center justify-center">
-        <button
-          type="button"
-          onClick={() => onOpen(memory)}
-          className="w-full h-full flex items-center justify-center cursor-pointer text-left focus:outline-none"
-          aria-label={`Open memory: ${memory.title || 'Untitled'}`}
-        >
-          {memory.mediaType === 'photo' && displayUrl ? (
-            <img
-              src={displayUrl}
-              alt={memory.altText || memory.title || 'Memory photo'}
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-contain bg-[var(--bg-subtle)] transition-transform duration-200 group-hover:scale-[1.02]"
-            />
-          ) : memory.mediaType === 'video' ? (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-6 bg-[var(--paper-pink)] text-center">
-              <Film className="w-8 h-8 text-[var(--accent)]" />
-              <span className="text-xs font-space-mono uppercase tracking-wider text-[var(--ink)]">
-                Video Memory · Play
-              </span>
-            </div>
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-6 bg-[var(--paper-blue)] text-center">
-              <Mic className="w-8 h-8 text-[var(--ink)]" />
-              <span className="text-xs font-space-mono uppercase tracking-wider text-[var(--ink)]">
-                {memory.externalSongUrl
-                  ? 'Soundtrack Song · Open'
-                  : 'Audio Note · Listen'}
-              </span>
-            </div>
-          )}
-        </button>
-
-        {/* Top-right action badges */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
-          {!isTrashed && onToggleFeatured && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleFeatured(memory);
-              }}
-              aria-label={
-                isFeatured
-                  ? 'Clear Featured Memory on Home'
-                  : 'Set as Featured Memory on Home'
-              }
-              title={
-                isFeatured
-                  ? 'Clear Featured Memory on Home'
-                  : 'Set as Featured Memory on Home'
-              }
-              className={`p-2 rounded-2xl border-2 border-[var(--ink)] transition-transform duration-150 active:scale-95 cursor-pointer ${
-                isFeatured
-                  ? 'bg-amber-100 dark:bg-amber-950/90 text-amber-500'
-                  : 'bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-amber-50 hover:text-amber-500'
-              }`}
-            >
-              <Star
-                className={`w-4 h-4 ${
-                  isFeatured ? 'fill-amber-400 text-amber-500' : ''
-                }`}
+    <article className="group flex flex-col scrapbook-card-sm p-3 sm:p-3.5 transition-transform duration-150 hover:-translate-y-0.5 h-fit">
+      {/* Media Frame: wraps tightly around the natural dimensions of the photo/video with appropriate padding */}
+      <div className="w-full flex justify-center">
+        <div className="relative inline-flex items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-[var(--paper-blue)] border-2 border-[var(--ink)] max-w-full">
+          <button
+            type="button"
+            onClick={() => onOpen(memory)}
+            className="flex items-center justify-center cursor-pointer text-left focus:outline-none max-w-full"
+            aria-label={`Open memory: ${memory.title || 'Untitled'}`}
+          >
+            {memory.mediaType === 'photo' && displayUrl ? (
+              <img
+                src={displayUrl}
+                alt={memory.altText || memory.title || 'Memory photo'}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                className="block w-auto h-auto max-w-full max-h-[320px] sm:max-h-[340px] rounded-xl object-contain transition-transform duration-200 group-hover:scale-[1.01]"
               />
-            </button>
-          )}
-
-          {!isTrashed && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleFavorite(memory);
-              }}
-              aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
-              title={isFav ? 'Remove from favorites' : 'Add to favorites'}
-              className={`p-2 rounded-2xl border-2 border-[var(--ink)] transition-transform duration-150 active:scale-95 cursor-pointer ${
-                isFav
-                  ? 'bg-rose-100 dark:bg-rose-950/90 text-rose-600'
-                  : 'bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-[var(--paper-pink)] hover:text-rose-600'
-              }`}
-            >
-              <Heart
-                className={`w-4 h-4 ${
-                  isFav ? 'fill-rose-600 text-rose-600' : ''
-                }`}
-              />
-            </button>
-          )}
-
-          {onTrashOrRestore && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onTrashOrRestore(memory);
-              }}
-              aria-label={isTrashed ? 'Restore from Trash' : 'Move to Trash'}
-              title={isTrashed ? 'Restore from Trash' : 'Move to Trash'}
-              className="p-2 rounded-2xl border-2 border-[var(--ink)] bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-rose-50 hover:text-rose-600 transition-transform duration-150 active:scale-95 cursor-pointer"
-            >
-              {isTrashed ? (
-                <RotateCcw className="w-4 h-4" />
+            ) : memory.mediaType === 'video' ? (
+              memory.mediaUrl ? (
+                <div className="relative inline-flex items-center justify-center max-w-full">
+                  <video
+                    src={memory.mediaUrl}
+                    preload="metadata"
+                    muted
+                    playsInline
+                    className="block w-auto h-auto max-w-full max-h-[320px] sm:max-h-[340px] rounded-xl object-contain bg-black/90"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="px-3 py-1.5 rounded-full bg-black/70 text-white font-space-mono text-[10px] uppercase tracking-wider inline-flex items-center gap-1.5 border border-white/30">
+                      <Film className="w-3.5 h-3.5 text-[var(--accent)]" />
+                      <span>Play Video</span>
+                    </span>
+                  </div>
+                </div>
               ) : (
-                <Trash2 className="w-4 h-4" />
-              )}
-            </button>
-          )}
+                <div className="w-56 py-10 px-6 flex flex-col items-center justify-center gap-2 rounded-xl bg-[var(--paper-pink)] text-center">
+                  <Film className="w-8 h-8 text-[var(--accent)]" />
+                  <span className="text-xs font-space-mono uppercase tracking-wider text-[var(--ink)]">
+                    Video Memory · Play
+                  </span>
+                </div>
+              )
+            ) : (
+              <div className="w-56 py-8 px-6 flex flex-col items-center justify-center gap-2 rounded-xl bg-[var(--bg-surface)] border border-dashed border-[var(--ink)] text-center">
+                <Mic className="w-7 h-7 text-[var(--ink)]" />
+                <span className="text-xs font-space-mono uppercase tracking-wider text-[var(--ink)]">
+                  {memory.externalSongUrl
+                    ? 'Soundtrack Song · Open'
+                    : 'Audio Note · Listen'}
+                </span>
+              </div>
+            )}
+          </button>
 
-          {isTrashed && onPermanentDelete && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPermanentDelete(memory);
-              }}
-              aria-label="Delete Permanently"
-              title="Delete Permanently"
-              className="p-2 rounded-2xl border-2 border-rose-600 bg-rose-600 text-white hover:bg-rose-700 transition-transform duration-150 active:scale-95 cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
+          {/* Top-right action badges */}
+          <div className="absolute top-3.5 right-3.5 flex items-center gap-1 z-10">
+            {!isTrashed && onToggleFeatured && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFeatured(memory);
+                }}
+                aria-label={
+                  isFeatured
+                    ? 'Clear Featured Memory on Home'
+                    : 'Set as Featured Memory on Home'
+                }
+                title={
+                  isFeatured
+                    ? 'Clear Featured Memory on Home'
+                    : 'Set as Featured Memory on Home'
+                }
+                className={`p-1.5 sm:p-2 rounded-xl border-2 border-[var(--ink)] shadow-xs transition-transform duration-150 active:scale-95 cursor-pointer ${
+                  isFeatured
+                    ? 'bg-amber-100 dark:bg-amber-950/90 text-amber-500'
+                    : 'bg-[var(--bg-surface)]/95 text-[var(--ink)] hover:bg-amber-50 hover:text-amber-500'
+                }`}
+              >
+                <Star
+                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
+                    isFeatured ? 'fill-amber-400 text-amber-500' : ''
+                  }`}
+                />
+              </button>
+            )}
+
+            {!isTrashed && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFavorite(memory);
+                }}
+                aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                className={`p-1.5 sm:p-2 rounded-xl border-2 border-[var(--ink)] shadow-xs transition-transform duration-150 active:scale-95 cursor-pointer ${
+                  isFav
+                    ? 'bg-rose-100 dark:bg-rose-950/90 text-rose-600'
+                    : 'bg-[var(--bg-surface)]/95 text-[var(--ink)] hover:bg-[var(--paper-pink)] hover:text-rose-600'
+                }`}
+              >
+                <Heart
+                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
+                    isFav ? 'fill-rose-600 text-rose-600' : ''
+                  }`}
+                />
+              </button>
+            )}
+
+            {onTrashOrRestore && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTrashOrRestore(memory);
+                }}
+                aria-label={isTrashed ? 'Restore from Trash' : 'Move to Trash'}
+                title={isTrashed ? 'Restore from Trash' : 'Move to Trash'}
+                className="p-1.5 sm:p-2 rounded-xl border-2 border-[var(--ink)] shadow-xs bg-[var(--bg-surface)]/95 text-[var(--ink)] hover:bg-rose-50 hover:text-rose-600 transition-transform duration-150 active:scale-95 cursor-pointer"
+              >
+                {isTrashed ? (
+                  <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                )}
+              </button>
+            )}
+
+            {isTrashed && onPermanentDelete && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPermanentDelete(memory);
+                }}
+                aria-label="Delete Permanently"
+                title="Delete Permanently"
+                className="p-1.5 sm:p-2 rounded-xl border-2 border-rose-600 shadow-xs bg-rose-600 text-white hover:bg-rose-700 transition-transform duration-150 active:scale-95 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="p-5 flex-1 flex flex-col justify-between space-y-2.5">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[11px] font-space-mono uppercase tracking-wider text-[var(--text-muted)]">
+      {/* Caption & Metadata Area */}
+      <div className="pt-3 px-1 flex flex-col justify-between space-y-2">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px] font-space-mono uppercase tracking-wider text-[var(--text-muted)]">
             <span className="inline-flex items-center gap-1">
               {mediaIcon}
               <span>{mediaLabel}</span>
@@ -595,7 +622,7 @@ export const MemoryCard: React.FC<{
             onClick={() => onOpen(memory)}
             className="block text-left w-full cursor-pointer"
           >
-            <h3 className="text-2xl font-gaegu font-bold text-[var(--ink)] line-clamp-1 leading-tight group-hover:text-[var(--accent)] transition-colors">
+            <h3 className="text-xl sm:text-2xl font-gaegu font-bold text-[var(--ink)] line-clamp-1 leading-tight group-hover:text-[var(--accent)] transition-colors">
               {memory.title || memory.originalFileName || 'Untitled Memory'}
             </h3>
           </button>
@@ -608,7 +635,7 @@ export const MemoryCard: React.FC<{
         </div>
 
         {memory.tags.length > 0 && (
-          <p className="text-[11px] font-space-mono text-[var(--text-muted)] truncate pt-2 border-t border-dashed border-[var(--ink-faint)]">
+          <p className="text-[10px] sm:text-[11px] font-space-mono text-[var(--text-muted)] truncate pt-1.5 border-t border-dashed border-[var(--ink-faint)]">
             {memory.tags.join(' · ')}
           </p>
         )}
