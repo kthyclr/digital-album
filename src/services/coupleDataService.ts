@@ -24,6 +24,11 @@ import {
   OperationType,
 } from '../lib/firebase';
 import {
+  supabase,
+  supabaseBucket,
+  isSupabaseStorageConfigured,
+} from '../lib/supabase';
+import {
   COUPLE_SPACE_ID,
   CoupleConfig,
   DEFAULT_COUPLE_CONFIG,
@@ -201,14 +206,9 @@ export interface UploadMemoryParams {
   onTaskCreated?: (task: UploadTask) => void;
 }
 
-// Track whether Firebase Cloud Storage bucket is reachable in this session
-// so we don't wait on network retries if Storage is not yet enabled on the project.
-let storageBucketAvailable = true;
-
 /**
- * Uploads a media file to Firebase Storage (with resumable progress and preview fallback)
- * and writes validated metadata to Firestore only after upload succeeds.
- * Cleans up orphaned Storage objects if Firestore write fails.
+ * Uploads photos, videos, and audio files to Supabase Storage (primary media engine),
+ * with an instant Firestore preview fallback for photos/small audio if Supabase env vars are not yet added.
  */
 export async function uploadAndCreateMemory(
   params: UploadMemoryParams
@@ -227,14 +227,14 @@ export async function uploadAndCreateMemory(
 
   if (params.onProgress) params.onProgress(15);
 
-  // Generate high-clarity preview for photos right away
-  const thumbnailUrl = await generateImagePreviewDataUrl(params.file, 1200, 0.82);
-  if (params.onProgress) params.onProgress(40);
+  // Generate compact preview thumbnail for photos right away
+  const thumbnailUrl = await generateImagePreviewDataUrl(params.file, 960, 0.75);
+  if (params.onProgress) params.onProgress(35);
 
   let uploadedStoragePath = '';
   let resolvedMediaUrl = '';
 
-  const fallbackToFastFirestoreMedia = async (originalError?: unknown) => {
+  const fallbackToFastFirestoreMedia = async (reason?: string) => {
     if (params.mediaType === 'photo' && thumbnailUrl) {
       uploadedStoragePath = '';
       resolvedMediaUrl = thumbnailUrl;
@@ -246,7 +246,7 @@ export async function uploadAndCreateMemory(
         const reader = new FileReader();
         reader.onload = () =>
           res(typeof reader.result === 'string' ? reader.result : '');
-        reader.onerror = () => rej(originalError || new Error('File read error'));
+        reader.onerror = () => rej(new Error(reason || 'File read error'));
         reader.readAsDataURL(params.file);
       });
       if (inlineDataUrl && inlineDataUrl.length <= 740000) {
@@ -256,93 +256,47 @@ export async function uploadAndCreateMemory(
         return;
       }
     }
-    throw (
-      originalError ||
-      new Error(
-        'For large video or audio files over 500 KB, please enable Cloud Storage in your Firebase Console.'
-      )
+    throw new Error(
+      reason ||
+        'To upload full-size videos and audio files, please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (with a public "memories" bucket in Supabase).'
     );
   };
 
-  if (!storageBucketAvailable) {
-    await fallbackToFastFirestoreMedia();
-  } else {
+  // Primary Media Storage: Supabase Storage (for photos, videos, and audio)
+  if (isSupabaseStorageConfigured() && supabase) {
     try {
-      const fileRef = storageRef(storage, objectStoragePath);
-      const uploadTask = uploadBytesResumable(fileRef, params.file, {
-        contentType: params.file.type,
-        customMetadata: {
-          createdBy: user.uid,
-          memoryId,
-        },
-      });
+      if (params.onProgress) params.onProgress(60);
+      const { error: upError } = await supabase.storage
+        .from(supabaseBucket)
+        .upload(objectStoragePath, params.file, {
+          contentType: params.file.type || 'application/octet-stream',
+          cacheControl: '3600',
+          upsert: false,
+        });
 
-      if (params.onTaskCreated) {
-        params.onTaskCreated(uploadTask);
+      if (upError) {
+        throw new Error(`Supabase Storage (${supabaseBucket}): ${upError.message}`);
       }
 
-      await new Promise<void>((resolve, reject) => {
-        let madeProgress = false;
-        // If Storage makes zero progress within 3.5 seconds (e.g., bucket not initialized or CORS blocked),
-        // abort the hung request and use the fast preview pipeline immediately.
-        const stallTimer = setTimeout(() => {
-          if (!madeProgress) {
-            storageBucketAvailable = false;
-            uploadTask.cancel();
-            reject(new Error('storage/stall-timeout'));
-          }
-        }, 3500);
+      const { data: pubData } = supabase.storage
+        .from(supabaseBucket)
+        .getPublicUrl(objectStoragePath);
 
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            if (snapshot.bytesTransferred > 0) {
-              madeProgress = true;
-              clearTimeout(stallTimer);
-            }
-            if (snapshot.totalBytes > 0 && params.onProgress) {
-              const pct = Math.max(
-                40,
-                Math.round(
-                  (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-                )
-              );
-              params.onProgress(pct);
-            }
-          },
-          (error) => {
-            clearTimeout(stallTimer);
-            reject(error);
-          },
-          () => {
-            clearTimeout(stallTimer);
-            resolve();
-          }
-        );
-      });
-
-      uploadedStoragePath = objectStoragePath;
-      resolvedMediaUrl = await getDownloadURL(fileRef);
-    } catch (storageErr: unknown) {
-      const errCode =
-        storageErr && typeof storageErr === 'object' && 'code' in storageErr
-          ? (storageErr as { code: string }).code
-          : '';
-      const errMsg =
-        storageErr instanceof Error ? storageErr.message : String(storageErr);
-
-      // Only treat as user cancellation if it wasn't our stall-timeout detector
-      if (
-        errCode === 'storage/canceled' &&
-        !errMsg.includes('storage/stall-timeout') &&
-        storageBucketAvailable
-      ) {
-        throw new Error('Upload was cancelled.');
-      }
-
-      storageBucketAvailable = false;
-      await fallbackToFastFirestoreMedia(storageErr);
+      uploadedStoragePath = `supabase:${objectStoragePath}`;
+      resolvedMediaUrl = pubData.publicUrl;
+      if (params.onProgress) params.onProgress(100);
+    } catch (supaErr: unknown) {
+      const msg =
+        supaErr instanceof Error ? supaErr.message : 'Supabase upload failed.';
+      // For photos or compact audio, allow instant Firestore fallback if bucket isn't created yet;
+      // for large video/audio, surface the exact Supabase bucket error clearly.
+      await fallbackToFastFirestoreMedia(msg);
     }
+  } else {
+    // Supabase env vars not set yet — use instant Firestore fallback for photos/small audio
+    await fallbackToFastFirestoreMedia(
+      'Supabase Storage is not configured yet (missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).'
+    );
   }
 
   // Parse memoryYear and memoryMonth from memoryDate
@@ -380,6 +334,12 @@ export async function uploadAndCreateMemory(
     )
   ).slice(0, 10);
 
+  // CRITICAL: When using inline Firestore preview fallback (uploadedStoragePath === ''),
+  // do NOT duplicate the base64 string in both mediaUrl and thumbnailUrl, or the
+  // document will exceed Firestore's 1MB total document limit!
+  const storedThumbnailUrl =
+    uploadedStoragePath && thumbnailUrl ? thumbnailUrl.slice(0, 350000) : '';
+
   const memoryRecord = {
     title: params.title.trim().slice(0, 160),
     caption: params.caption.trim().slice(0, 2000),
@@ -390,7 +350,7 @@ export async function uploadAndCreateMemory(
     mediaType: params.mediaType,
     storagePath: uploadedStoragePath.slice(0, 500),
     mediaUrl: resolvedMediaUrl.slice(0, 750000),
-    thumbnailUrl: (thumbnailUrl || '').slice(0, 350000),
+    thumbnailUrl: storedThumbnailUrl,
     originalFileName: params.file.name.slice(0, 255),
     contentType: (params.file.type || 'application/octet-stream').slice(0, 100),
     sizeBytes: params.file.size,
@@ -418,7 +378,10 @@ export async function uploadAndCreateMemory(
     return memoryId;
   } catch (firestoreErr) {
     // Cleanup orphaned Storage file if Firestore metadata write failed
-    if (uploadedStoragePath) {
+    if (uploadedStoragePath.startsWith('supabase:') && supabase) {
+      const cleanPath = uploadedStoragePath.replace(/^supabase:/, '');
+      await supabase.storage.from(supabaseBucket).remove([cleanPath]);
+    } else if (uploadedStoragePath) {
       try {
         await deleteObject(storageRef(storage, uploadedStoragePath));
       } catch (cleanupErr) {
@@ -604,18 +567,29 @@ export async function permanentlyDeleteMemory(
   let warning: string | undefined;
 
   if (memory.storagePath) {
-    try {
-      await deleteObject(storageRef(storage, memory.storagePath));
-    } catch (storageErr: unknown) {
-      // If object is already gone (storage/object-not-found), proceed with metadata deletion
-      const code =
-        storageErr && typeof storageErr === 'object' && 'code' in storageErr
-          ? (storageErr as { code: string }).code
-          : '';
-      if (code !== 'storage/object-not-found') {
+    if (memory.storagePath.startsWith('supabase:') && supabase) {
+      const cleanPath = memory.storagePath.replace(/^supabase:/, '');
+      const { error: delError } = await supabase.storage
+        .from(supabaseBucket)
+        .remove([cleanPath]);
+      if (delError) {
         storageDeleted = false;
         warning =
-          'The Firestore metadata record was removed, but the original Storage file could not be deleted automatically.';
+          'The metadata record was removed, but the file in Supabase Storage could not be deleted automatically.';
+      }
+    } else {
+      try {
+        await deleteObject(storageRef(storage, memory.storagePath));
+      } catch (storageErr: unknown) {
+        const code =
+          storageErr && typeof storageErr === 'object' && 'code' in storageErr
+            ? (storageErr as { code: string }).code
+            : '';
+        if (code !== 'storage/object-not-found') {
+          storageDeleted = false;
+          warning =
+            'The Firestore metadata record was removed, but the original Storage file could not be deleted automatically.';
+        }
       }
     }
   }

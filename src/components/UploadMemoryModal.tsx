@@ -261,6 +261,17 @@ export const UploadMemoryModal: React.FC<{
 
   const handleCloseModal = () => {
     const activeUploads = queue.filter((i) => i.status === 'uploading');
+    const pendingQueued = queue.filter((i) => i.status === 'queued');
+
+    if (pendingQueued.length > 0 && activeUploads.length === 0) {
+      const confirmDiscard = window.confirm(
+        `You have ${pendingQueued.length} selected ${
+          pendingQueued.length === 1 ? 'file' : 'files'
+        } in the queue that haven't been uploaded yet. Click Cancel to stay and click "Start Upload", or OK to discard them.`
+      );
+      if (!confirmDiscard) return;
+    }
+
     if (activeUploads.length > 0) {
       // Cancel active uploads on close
       activeUploads.forEach((item) => item.uploadTask?.cancel());
@@ -287,29 +298,43 @@ export const UploadMemoryModal: React.FC<{
       aria-labelledby="upload-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-xs overflow-y-auto"
     >
-      <div className="w-full max-w-3xl my-8 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-[var(--border-hairline)] flex items-center justify-between">
+      <div className="w-full max-w-3xl my-8 rounded-2xl bg-[var(--bg-surface)] border-3 border-[var(--ink)] overflow-hidden flex flex-col max-h-[90vh] shadow-[12px_12px_0_var(--ink-faint)]">
+        {/* Header with prominent Start Upload button when files are queued */}
+        <div className="px-6 py-4 border-b-2 border-[var(--ink)] flex flex-wrap items-center justify-between gap-3 bg-[var(--paper-blue)]">
           <div>
             <h2
               id="upload-modal-title"
-              className="text-2xl font-serif-editorial font-semibold text-[var(--text-primary)]"
+              className="text-3xl font-gaegu font-bold text-[var(--ink)] leading-none"
             >
               Add to Our Memories
             </h2>
-            <p className="text-xs text-[var(--text-secondary)]">
-              Supported: JPEG, PNG, WebP, MP4, WebM, MP3, M4A/AAC, WAV · Max{' '}
+            <p className="text-xs font-space-mono text-[var(--text-secondary)] mt-0.5">
+              Supported: Photos, Videos &amp; Audio · Max{' '}
               {coupleConfig.maxFileSizeMB} MB per file
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleCloseModal}
-            aria-label="Close upload modal"
-            className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {queuedCount > 0 && (
+              <button
+                type="button"
+                disabled={isUploadingBatch}
+                onClick={handleUploadAllQueued}
+                className="scrapbook-btn-primary px-5 py-2.5 text-xs font-bold cursor-pointer whitespace-nowrap shrink-0 animate-pulse"
+              >
+                {isUploadingBatch
+                  ? 'Uploading...'
+                  : `Start Upload (${queuedCount} ${queuedCount === 1 ? 'File' : 'Files'})`}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              aria-label="Close upload modal"
+              className="p-2 rounded-xl border-2 border-[var(--ink)] bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-[var(--paper-pink)] cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Body */}

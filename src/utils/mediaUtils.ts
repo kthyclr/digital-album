@@ -88,8 +88,8 @@ export function detectFileCaptureDate(file: File): {
  */
 export async function generateImagePreviewDataUrl(
   file: File,
-  maxDimension = 900,
-  quality = 0.8
+  maxDimension = 960,
+  quality = 0.75
 ): Promise<string> {
   return new Promise((resolve) => {
     if (!file.type.startsWith('image/')) {
@@ -120,14 +120,22 @@ export async function generateImagePreviewDataUrl(
             return;
           }
           ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL('image/jpeg', quality);
-          // Ensure preview stays well under Firestore field limits (max 300KB)
-          if (dataUrl.length <= 320000) {
-            resolve(dataUrl);
-          } else {
-            const smallerUrl = canvas.toDataURL('image/jpeg', 0.55);
-            resolve(smallerUrl.length <= 320000 ? smallerUrl : '');
+          let dataUrl = canvas.toDataURL('image/jpeg', quality);
+          if (dataUrl.length > 340000) {
+            dataUrl = canvas.toDataURL('image/jpeg', 0.55);
           }
+          if (dataUrl.length > 340000) {
+            const smallCanvas = document.createElement('canvas');
+            const scale = 640 / Math.max(width, height);
+            smallCanvas.width = Math.round(width * scale);
+            smallCanvas.height = Math.round(height * scale);
+            const sCtx = smallCanvas.getContext('2d');
+            if (sCtx) {
+              sCtx.drawImage(img, 0, 0, smallCanvas.width, smallCanvas.height);
+              dataUrl = smallCanvas.toDataURL('image/jpeg', 0.6);
+            }
+          }
+          resolve(dataUrl.length <= 345000 ? dataUrl : '');
         } catch {
           resolve('');
         }
