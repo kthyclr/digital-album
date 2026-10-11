@@ -1,0 +1,478 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Primitive & Identity Helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    // Only Kathy and Austin's verified accounts are authorized
+    function isAuthorizedCoupleUser() {
+      return isSignedIn() && (
+        request.auth.token.email == 'lauretokathyclaire@gmail.com' ||
+        request.auth.token.email == 'austinfeguro@gmail.com'
+      );
+    }
+
+    function isCoupleSpace(coupleId) {
+      return coupleId == 'kathy-austin-space' && isAuthorizedCoupleUser();
+    }
+
+    function isCoupleMemberDocExists(coupleId) {
+      return exists(/databases/$(database)/documents/couples/$(coupleId)/members/$(request.auth.uid));
+    }
+
+    // 3. Entity Validation Blueprints (The Anti-Update-Gap)
+
+    function isValidCouple(data) {
+      return data.keys().hasAll([
+        'displayName', 'subtitle', 'partnerOneName', 'partnerTwoName',
+        'affectionateLabelOne', 'affectionateLabelTwo', 'funnyLabelOne', 'funnyLabelTwo',
+        'relationshipStartDate', 'timezone', 'featuredMemoryId',
+        'maxFileSizeMB', 'trashRetentionDays', 'createdAt', 'updatedAt', 'updatedBy'
+      ]) &&
+      data.keys().hasOnly([
+        'displayName', 'subtitle', 'partnerOneName', 'partnerTwoName',
+        'affectionateLabelOne', 'affectionateLabelTwo', 'funnyLabelOne', 'funnyLabelTwo',
+        'relationshipStartDate', 'timezone', 'featuredMemoryId',
+        'maxFileSizeMB', 'trashRetentionDays', 'createdAt', 'updatedAt', 'updatedBy'
+      ]) &&
+      data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+      data.subtitle is string && data.subtitle.size() <= 200 &&
+      data.partnerOneName is string && data.partnerOneName.size() >= 1 && data.partnerOneName.size() <= 60 &&
+      data.partnerTwoName is string && data.partnerTwoName.size() >= 1 && data.partnerTwoName.size() <= 60 &&
+      data.affectionateLabelOne is string && data.affectionateLabelOne.size() >= 1 && data.affectionateLabelOne.size() <= 40 &&
+      data.affectionateLabelTwo is string && data.affectionateLabelTwo.size() >= 1 && data.affectionateLabelTwo.size() <= 40 &&
+      data.funnyLabelOne is string && data.funnyLabelOne.size() >= 1 && data.funnyLabelOne.size() <= 40 &&
+      data.funnyLabelTwo is string && data.funnyLabelTwo.size() >= 1 && data.funnyLabelTwo.size() <= 40 &&
+      data.relationshipStartDate is string && data.relationshipStartDate.size() >= 8 && data.relationshipStartDate.size() <= 40 &&
+      data.timezone is string && data.timezone.size() >= 1 && data.timezone.size() <= 80 &&
+      data.featuredMemoryId is string && data.featuredMemoryId.size() <= 128 &&
+      data.maxFileSizeMB is number && data.maxFileSizeMB >= 1 && data.maxFileSizeMB <= 500 &&
+      data.trashRetentionDays is number && data.trashRetentionDays >= 1 && data.trashRetentionDays <= 365 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp &&
+      data.updatedBy is string && data.updatedBy == request.auth.uid && data.updatedBy.size() <= 128;
+    }
+
+    function isValidMember(data, memberUid) {
+      return data.keys().hasAll([
+        'uid', 'role', 'displayName', 'email', 'endearment', 'status', 'joinedAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid', 'role', 'displayName', 'email', 'endearment', 'status', 'joinedAt', 'updatedAt'
+      ]) &&
+      data.uid is string && data.uid == request.auth.uid && data.uid == memberUid && data.uid.size() <= 128 &&
+      data.role is string && (data.role == 'owner' || data.role == 'partner') && data.role.size() <= 20 &&
+      data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+      data.email is string && data.email == request.auth.token.email && data.email.size() <= 120 &&
+      data.endearment is string && data.endearment.size() <= 60 &&
+      data.status is string && data.status == 'active' && data.status.size() <= 20 &&
+      data.joinedAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidMemory(data) {
+      return data.keys().hasAll([
+        'title', 'caption', 'memoryDate', 'memoryYear', 'memoryMonth', 'dateSource',
+        'mediaType', 'storagePath', 'mediaUrl', 'thumbnailUrl', 'originalFileName',
+        'contentType', 'sizeBytes', 'locationText', 'altText', 'tags', 'albumIds',
+        'favoritedBy', 'isLingKong', 'lingKongLabel', 'isSoundtrack', 'externalSongUrl',
+        'soundtrackNotes', 'status', 'trashedAt', 'createdBy', 'creatorName', 'uploadedAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'caption', 'memoryDate', 'memoryYear', 'memoryMonth', 'dateSource',
+        'mediaType', 'storagePath', 'mediaUrl', 'thumbnailUrl', 'originalFileName',
+        'contentType', 'sizeBytes', 'locationText', 'altText', 'tags', 'albumIds',
+        'favoritedBy', 'isLingKong', 'lingKongLabel', 'isSoundtrack', 'externalSongUrl',
+        'soundtrackNotes', 'status', 'trashedAt', 'createdBy', 'creatorName', 'uploadedAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() <= 160 &&
+      data.caption is string && data.caption.size() <= 2000 &&
+      data.memoryDate is string && data.memoryDate.size() >= 8 && data.memoryDate.size() <= 40 &&
+      data.memoryYear is number && data.memoryYear >= 1900 && data.memoryYear <= 2200 &&
+      data.memoryMonth is number && data.memoryMonth >= 1 && data.memoryMonth <= 12 &&
+      data.dateSource is string && (data.dateSource in ['exif', 'file-modified', 'manual', 'fallback-today']) && data.dateSource.size() <= 30 &&
+      data.mediaType is string && (data.mediaType in ['photo', 'video', 'audio']) && data.mediaType.size() <= 20 &&
+      data.storagePath is string && data.storagePath.size() <= 500 &&
+      data.mediaUrl is string && data.mediaUrl.size() <= 750000 &&
+      data.thumbnailUrl is string && data.thumbnailUrl.size() <= 350000 &&
+      data.originalFileName is string && data.originalFileName.size() <= 255 &&
+      data.contentType is string && data.contentType.size() <= 100 &&
+      data.sizeBytes is number && data.sizeBytes >= 0 && data.sizeBytes <= 524288000 &&
+      data.locationText is string && data.locationText.size() <= 160 &&
+      data.altText is string && data.altText.size() <= 300 &&
+      data.tags is list && data.tags.size() <= 15 && (data.tags.size() == 0 || (data.tags[0] is string && data.tags[0].size() <= 50)) &&
+      data.albumIds is list && data.albumIds.size() <= 10 && (data.albumIds.size() == 0 || (data.albumIds[0] is string && data.albumIds[0].size() <= 128)) &&
+      data.favoritedBy is list && data.favoritedBy.size() <= 5 && (data.favoritedBy.size() == 0 || (data.favoritedBy[0] is string && data.favoritedBy[0].size() <= 128)) &&
+      data.isLingKong is bool &&
+      data.lingKongLabel is string && data.lingKongLabel.size() <= 80 &&
+      data.isSoundtrack is bool &&
+      data.externalSongUrl is string && data.externalSongUrl.size() <= 500 &&
+      data.soundtrackNotes is string && data.soundtrackNotes.size() <= 1000 &&
+      data.status is string && (data.status in ['active', 'trashed']) && data.status.size() <= 20 &&
+      data.trashedAt is string && data.trashedAt.size() <= 40 &&
+      data.createdBy is string && data.createdBy.size() <= 128 &&
+      data.creatorName is string && data.creatorName.size() <= 80 &&
+      data.uploadedAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidAlbum(data) {
+      return data.keys().hasAll([
+        'title', 'description', 'coverMemoryId', 'sortOrder', 'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'description', 'coverMemoryId', 'sortOrder', 'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+      data.description is string && data.description.size() <= 500 &&
+      data.coverMemoryId is string && data.coverMemoryId.size() <= 128 &&
+      data.sortOrder is number && data.sortOrder >= 0 && data.sortOrder <= 10000 &&
+      data.createdBy is string && data.createdBy.size() <= 128 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidMilestone(data) {
+      return data.keys().hasAll([
+        'title', 'description', 'eventDate', 'category', 'memoryIds', 'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'description', 'eventDate', 'category', 'memoryIds', 'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+      data.description is string && data.description.size() <= 1500 &&
+      data.eventDate is string && data.eventDate.size() >= 8 && data.eventDate.size() <= 40 &&
+      data.category is string && data.category.size() <= 60 &&
+      data.memoryIds is list && data.memoryIds.size() <= 10 && (data.memoryIds.size() == 0 || (data.memoryIds[0] is string && data.memoryIds[0].size() <= 128)) &&
+      data.createdBy is string && data.createdBy.size() <= 128 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidLetter(data) {
+      return data.keys().hasAll([
+        'title', 'recipient', 'occasionNote', 'unlockAt', 'unlockDateIso',
+        'readBy', 'createdBy', 'creatorName', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'recipient', 'occasionNote', 'unlockAt', 'unlockDateIso',
+        'readBy', 'createdBy', 'creatorName', 'createdAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+      data.recipient is string && (data.recipient in ['Kathy', 'Austin', 'Both of Us', 'Our Future Selves']) && data.recipient.size() <= 40 &&
+      data.occasionNote is string && data.occasionNote.size() <= 240 &&
+      data.unlockAt is timestamp &&
+      data.unlockDateIso is string && data.unlockDateIso.size() >= 8 && data.unlockDateIso.size() <= 40 &&
+      data.readBy is list && data.readBy.size() <= 5 && (data.readBy.size() == 0 || (data.readBy[0] is string && data.readBy[0].size() <= 128)) &&
+      data.createdBy is string && data.createdBy.size() <= 128 &&
+      data.creatorName is string && data.creatorName.size() <= 80 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidLetterSecret(data) {
+      return data.keys().hasAll([
+        'body', 'unlockAt', 'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'body', 'unlockAt', 'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      data.body is string && data.body.size() >= 1 && data.body.size() <= 15000 &&
+      data.unlockAt is timestamp &&
+      data.createdBy is string && data.createdBy.size() <= 128 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidBucketItem(data) {
+      return data.keys().hasAll([
+        'title', 'description', 'category', 'status', 'priority',
+        'targetDate', 'linkedMemoryIds', 'completedAt', 'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'description', 'category', 'status', 'priority',
+        'targetDate', 'linkedMemoryIds', 'completedAt', 'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+      data.description is string && data.description.size() <= 1000 &&
+      data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+      data.status is string && (data.status in ['planned', 'in-progress', 'completed']) && data.status.size() <= 20 &&
+      data.priority is string && (data.priority in ['someday', 'soon', 'dream']) && data.priority.size() <= 20 &&
+      data.targetDate is string && data.targetDate.size() <= 40 &&
+      data.linkedMemoryIds is list && data.linkedMemoryIds.size() <= 10 && (data.linkedMemoryIds.size() == 0 || (data.linkedMemoryIds[0] is string && data.linkedMemoryIds[0].size() <= 128)) &&
+      data.completedAt is string && data.completedAt.size() <= 40 &&
+      data.createdBy is string && data.createdBy.size() <= 128 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidUserPreferences(data, userId) {
+      return data.keys().hasAll([
+        'uid', 'theme', 'defaultViewMode', 'reducedMotion', 'favoriteMemoryIds', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid', 'theme', 'defaultViewMode', 'reducedMotion', 'favoriteMemoryIds', 'updatedAt'
+      ]) &&
+      data.uid is string && data.uid == userId && data.uid == request.auth.uid && data.uid.size() <= 128 &&
+      data.theme is string && (data.theme in ['light', 'dark', 'system']) && data.theme.size() <= 20 &&
+      data.defaultViewMode is string && (data.defaultViewMode in ['grid', 'list']) && data.defaultViewMode.size() <= 20 &&
+      data.reducedMotion is bool &&
+      data.favoriteMemoryIds is list && data.favoriteMemoryIds.size() <= 100 && (data.favoriteMemoryIds.size() == 0 || (data.favoriteMemoryIds[0] is string && data.favoriteMemoryIds[0].size() <= 128)) &&
+      data.updatedAt is timestamp;
+    }
+
+    // 4. Collection Match Blocks
+
+    // Connection test probe path (read-only deny/allow check on boot)
+    match /test/connection {
+      allow get: if isSignedIn();
+    }
+
+    // Couple Space Document
+    match /couples/{coupleId} {
+      allow get: if isCoupleSpace(coupleId) && isValidId(coupleId);
+      allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) &&
+        isValidCouple(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) &&
+        isValidCouple(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'subtitle', 'partnerOneName', 'partnerTwoName',
+          'affectionateLabelOne', 'affectionateLabelTwo', 'funnyLabelOne', 'funnyLabelTwo',
+          'relationshipStartDate', 'timezone', 'featuredMemoryId',
+          'maxFileSizeMB', 'trashRetentionDays', 'updatedAt', 'updatedBy'
+        ]);
+
+      // Couple Members Subcollection
+      match /members/{memberUid} {
+        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memberUid);
+        allow list: if isCoupleSpace(coupleId) && existing().status == 'active';
+        allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memberUid) &&
+          isValidMember(incoming(), memberUid) &&
+          incoming().joinedAt == request.time &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/couples/$(coupleId));
+        allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memberUid) &&
+          isValidMember(incoming(), memberUid) &&
+          existing().uid == request.auth.uid &&
+          incoming().uid == existing().uid &&
+          incoming().role == existing().role &&
+          incoming().email == existing().email &&
+          incoming().joinedAt == existing().joinedAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'endearment', 'updatedAt']);
+      }
+
+      // Memories Subcollection
+      match /memories/{memoryId} {
+        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memoryId) && isCoupleMemberDocExists(coupleId);
+        allow list: if isCoupleSpace(coupleId) && (existing().status == 'active' || existing().status == 'trashed');
+        allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memoryId) &&
+          isValidMemory(incoming()) &&
+          incoming().createdBy == request.auth.uid &&
+          incoming().uploadedAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isCoupleMemberDocExists(coupleId);
+        allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memoryId) &&
+          isValidMemory(incoming()) &&
+          incoming().createdBy == existing().createdBy &&
+          incoming().uploadedAt == existing().uploadedAt &&
+          incoming().storagePath == existing().storagePath &&
+          incoming().originalFileName == existing().originalFileName &&
+          incoming().contentType == existing().contentType &&
+          incoming().sizeBytes == existing().sizeBytes &&
+          incoming().mediaType == existing().mediaType &&
+          incoming().updatedAt == request.time &&
+          isCoupleMemberDocExists(coupleId) && (
+            // Action 1: Metadata & Organization Update
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'caption', 'memoryDate', 'memoryYear', 'memoryMonth', 'dateSource',
+              'locationText', 'altText', 'tags', 'albumIds', 'favoritedBy',
+              'isLingKong', 'lingKongLabel', 'isSoundtrack', 'externalSongUrl',
+              'soundtrackNotes', 'status', 'trashedAt', 'updatedAt'
+            ])
+          );
+        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(memoryId) &&
+          isCoupleMemberDocExists(coupleId);
+      }
+
+      // Custom Albums Subcollection
+      match /albums/{albumId} {
+        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(albumId) && isCoupleMemberDocExists(coupleId);
+        allow list: if isCoupleSpace(coupleId) && existing().sortOrder >= 0;
+        allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(albumId) &&
+          isValidAlbum(incoming()) &&
+          incoming().createdBy == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isCoupleMemberDocExists(coupleId);
+        allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(albumId) &&
+          isValidAlbum(incoming()) &&
+          incoming().createdBy == existing().createdBy &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          isCoupleMemberDocExists(coupleId) &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'description', 'coverMemoryId', 'sortOrder', 'updatedAt'
+          ]);
+        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(albumId) &&
+          isCoupleMemberDocExists(coupleId);
+      }
+
+      // Our Story Milestones Subcollection
+      match /milestones/{milestoneId} {
+        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(milestoneId) && isCoupleMemberDocExists(coupleId);
+        allow list: if isCoupleSpace(coupleId) && existing().eventDate.size() >= 8;
+        allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(milestoneId) &&
+          isValidMilestone(incoming()) &&
+          incoming().createdBy == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isCoupleMemberDocExists(coupleId);
+        allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(milestoneId) &&
+          isValidMilestone(incoming()) &&
+          incoming().createdBy == existing().createdBy &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          isCoupleMemberDocExists(coupleId) &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'description', 'eventDate', 'category', 'memoryIds', 'updatedAt'
+          ]);
+        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(milestoneId) &&
+          isCoupleMemberDocExists(coupleId);
+      }
+
+      // Time Capsule Letter Envelopes Subcollection
+      match /letters/{letterId} {
+        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) && isCoupleMemberDocExists(coupleId);
+        allow list: if isCoupleSpace(coupleId) && existing().title.size() >= 1;
+        allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
+          isValidLetter(incoming()) &&
+          incoming().createdBy == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isCoupleMemberDocExists(coupleId);
+        allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
+          isValidLetter(incoming()) &&
+          incoming().createdBy == existing().createdBy &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          isCoupleMemberDocExists(coupleId) && (
+            // Action 1: Pre-unlock envelope edit by creator only
+            (existing().createdBy == request.auth.uid &&
+             request.time < existing().unlockAt &&
+             incoming().diff(existing()).affectedKeys().hasOnly([
+               'title', 'recipient', 'occasionNote', 'unlockAt', 'unlockDateIso', 'updatedAt'
+             ])) ||
+            // Action 2: Post-unlock marking as read by either authorized partner
+            (request.time >= existing().unlockAt &&
+             incoming().unlockAt == existing().unlockAt &&
+             incoming().title == existing().title &&
+             incoming().recipient == existing().recipient &&
+             incoming().occasionNote == existing().occasionNote &&
+             incoming().diff(existing()).affectedKeys().hasOnly(['readBy', 'updatedAt']))
+          );
+        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
+          existing().createdBy == request.auth.uid &&
+          request.time < existing().unlockAt &&
+          isCoupleMemberDocExists(coupleId);
+
+        // Protected Time Capsule Letter Body (Server-Authoritative Lock!)
+        match /secrets/{secretId} {
+          // CRITICAL: Letter body CANNOT be read before request.time >= existing().unlockAt!
+          allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
+            secretId == 'body' &&
+            request.time >= existing().unlockAt &&
+            isCoupleMemberDocExists(coupleId);
+          allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
+            secretId == 'body' &&
+            isValidLetterSecret(incoming()) &&
+            incoming().createdBy == request.auth.uid &&
+            incoming().createdAt == request.time &&
+            incoming().updatedAt == request.time &&
+            isCoupleMemberDocExists(coupleId);
+          allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
+            secretId == 'body' &&
+            isValidLetterSecret(incoming()) &&
+            existing().createdBy == request.auth.uid &&
+            request.time < existing().unlockAt &&
+            incoming().createdBy == existing().createdBy &&
+            incoming().createdAt == existing().createdAt &&
+            incoming().updatedAt == request.time &&
+            isCoupleMemberDocExists(coupleId) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['body', 'unlockAt', 'updatedAt']);
+          allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(letterId) &&
+            secretId == 'body' &&
+            existing().createdBy == request.auth.uid &&
+            request.time < existing().unlockAt &&
+            isCoupleMemberDocExists(coupleId);
+        }
+      }
+
+      // Shared Bucket List Subcollection
+      match /bucketItems/{itemId} {
+        allow get: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(itemId) && isCoupleMemberDocExists(coupleId);
+        allow list: if isCoupleSpace(coupleId) && existing().title.size() >= 1;
+        allow create: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(itemId) &&
+          isValidBucketItem(incoming()) &&
+          incoming().createdBy == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isCoupleMemberDocExists(coupleId);
+        allow update: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(itemId) &&
+          isValidBucketItem(incoming()) &&
+          incoming().createdBy == existing().createdBy &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          isCoupleMemberDocExists(coupleId) &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'description', 'category', 'status', 'priority',
+            'targetDate', 'linkedMemoryIds', 'completedAt', 'updatedAt'
+          ]);
+        allow delete: if isCoupleSpace(coupleId) && isValidId(coupleId) && isValidId(itemId) &&
+          isCoupleMemberDocExists(coupleId);
+      }
+    }
+
+    // Per-User Isolated Preferences
+    match /users/{userId}/preferences/{prefId} {
+      allow get: if isAuthorizedCoupleUser() && isValidId(userId) && isValidId(prefId) &&
+        request.auth.uid == userId && prefId == 'default';
+      allow create: if isAuthorizedCoupleUser() && isValidId(userId) && isValidId(prefId) &&
+        request.auth.uid == userId && prefId == 'default' &&
+        isValidUserPreferences(incoming(), userId) &&
+        incoming().updatedAt == request.time;
+      allow update: if isAuthorizedCoupleUser() && isValidId(userId) && isValidId(prefId) &&
+        request.auth.uid == userId && prefId == 'default' &&
+        isValidUserPreferences(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'theme', 'defaultViewMode', 'reducedMotion', 'favoriteMemoryIds', 'updatedAt'
+        ]);
+    }
+  }
+}

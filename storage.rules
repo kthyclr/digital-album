@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Default deny all public or unknown paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    function isAuthorizedCoupleMember() {
+      return request.auth != null &&
+        request.auth.token.email_verified == true && (
+          request.auth.token.email == 'lauretokathyclaire@gmail.com' ||
+          request.auth.token.email == 'austinfeguro@gmail.com'
+        );
+    }
+
+    function isValidMediaContentType() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp|gif|heic)') ||
+             request.resource.contentType.matches('video/(mp4|webm|quicktime)') ||
+             request.resource.contentType.matches('audio/(mpeg|mp3|mp4|aac|wav|webm|ogg|x-m4a)');
+    }
+
+    // Couple-space private media namespace
+    // Path structure: couples/kathy-austin-space/memories/{memoryId}/{fileName}
+    match /couples/{coupleId}/memories/{memoryId}/{fileName} {
+      allow read: if coupleId == 'kathy-austin-space' &&
+        isAuthorizedCoupleMember() &&
+        memoryId.size() <= 128 &&
+        fileName.size() <= 255;
+
+      allow create, update: if coupleId == 'kathy-austin-space' &&
+        isAuthorizedCoupleMember() &&
+        memoryId.size() <= 128 &&
+        fileName.size() <= 255 &&
+        request.resource.size <= 100 * 1024 * 1024 &&
+        isValidMediaContentType();
+
+      allow delete: if coupleId == 'kathy-austin-space' &&
+        isAuthorizedCoupleMember() &&
+        memoryId.size() <= 128 &&
+        fileName.size() <= 255;
+    }
+  }
+}

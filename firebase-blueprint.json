@@ -1,0 +1,716 @@
+{
+  "entities": {
+    "Couple": {
+      "title": "Couple",
+      "description": "Shared couple space configuration and preferences for Kathy & Austin",
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Display name of the couple space (e.g., Moly & Love: Our Little Universe)"
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Personal relationship tagline (e.g., Tiny moments, big meaning)"
+        },
+        "partnerOneName": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "First partner display name (Kathy)"
+        },
+        "partnerTwoName": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Second partner display name (Austin)"
+        },
+        "affectionateLabelOne": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Affectionate endearment 1 (Moly)"
+        },
+        "affectionateLabelTwo": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Affectionate endearment 2 (Love)"
+        },
+        "funnyLabelOne": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Funny endearment 1 (Ling)"
+        },
+        "funnyLabelTwo": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Funny endearment 2 (Kong)"
+        },
+        "relationshipStartDate": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "ISO date string for relationship start (default 2026-09-15)"
+        },
+        "timezone": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Configured IANA timezone string"
+        },
+        "featuredMemoryId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Optional featured memory document ID"
+        },
+        "maxFileSizeMB": {
+          "type": "number",
+          "description": "Configurable max file size in MB"
+        },
+        "trashRetentionDays": {
+          "type": "number",
+          "description": "Configurable soft-delete retention period in days"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        },
+        "updatedBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID of partner who last updated settings"
+        }
+      },
+      "required": [
+        "displayName",
+        "subtitle",
+        "partnerOneName",
+        "partnerTwoName",
+        "affectionateLabelOne",
+        "affectionateLabelTwo",
+        "funnyLabelOne",
+        "funnyLabelTwo",
+        "relationshipStartDate",
+        "timezone",
+        "maxFileSizeMB",
+        "trashRetentionDays",
+        "createdAt",
+        "updatedAt",
+        "updatedBy"
+      ]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Authorized couple space member record",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase Auth UID"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["owner", "partner"],
+          "maxLength": 20,
+          "description": "Member role"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Member display name"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Authorized email address"
+        },
+        "endearment": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Personal endearment badge (Moly / Love · Ling / Kong)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active"],
+          "maxLength": 20,
+          "description": "Membership status"
+        },
+        "joinedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when joined"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when updated"
+        }
+      },
+      "required": [
+        "uid",
+        "role",
+        "displayName",
+        "email",
+        "endearment",
+        "status",
+        "joinedAt",
+        "updatedAt"
+      ]
+    },
+    "Memory": {
+      "title": "Memory",
+      "description": "Photo, video, or audio memory item stored in the couple space",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "Memory title"
+        },
+        "caption": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Caption, story, or description"
+        },
+        "memoryDate": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "ISO date YYYY-MM-DD when the memory happened"
+        },
+        "memoryYear": {
+          "type": "number",
+          "description": "Derived year from memoryDate"
+        },
+        "memoryMonth": {
+          "type": "number",
+          "description": "Derived month (1-12) from memoryDate"
+        },
+        "dateSource": {
+          "type": "string",
+          "enum": ["exif", "file-modified", "manual", "fallback-today"],
+          "maxLength": 30,
+          "description": "How memoryDate was determined"
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["photo", "video", "audio"],
+          "maxLength": 20,
+          "description": "Primary media classification"
+        },
+        "storagePath": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Firebase Storage path or empty if inline preview asset"
+        },
+        "mediaUrl": {
+          "type": "string",
+          "maxLength": 750000,
+          "description": "Authenticated download URL or optimized preview data URI"
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "maxLength": 350000,
+          "description": "Optional separate preview thumbnail URL or data URI"
+        },
+        "originalFileName": {
+          "type": "string",
+          "maxLength": 255,
+          "description": "Sanitized original filename"
+        },
+        "contentType": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Verified MIME type"
+        },
+        "sizeBytes": {
+          "type": "number",
+          "description": "Original file size in bytes"
+        },
+        "locationText": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "Optional place or location description"
+        },
+        "altText": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Accessible alt description for images"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Up to 15 tags on the memory"
+        },
+        "albumIds": {
+          "type": "array",
+          "description": "Up to 10 custom album IDs"
+        },
+        "favoritedBy": {
+          "type": "array",
+          "description": "List of member UIDs who favorited this memory"
+        },
+        "isLingKong": {
+          "type": "boolean",
+          "description": "Whether this memory appears in the Ling & Kong funny collection"
+        },
+        "lingKongLabel": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Optional custom Ling & Kong subcategory label"
+        },
+        "isSoundtrack": {
+          "type": "boolean",
+          "description": "Whether this audio memory is featured in Our Soundtrack"
+        },
+        "externalSongUrl": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Optional validated external streaming link for soundtrack entries"
+        },
+        "soundtrackNotes": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Notes on why this song or voice recording matters"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "trashed"],
+          "maxLength": 20,
+          "description": "Lifecycle status for active vs soft-deleted trash"
+        },
+        "trashedAt": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "ISO timestamp when moved to trash, or empty string"
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Creator UID"
+        },
+        "creatorName": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Creator display name"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server upload timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": [
+        "title",
+        "caption",
+        "memoryDate",
+        "memoryYear",
+        "memoryMonth",
+        "dateSource",
+        "mediaType",
+        "storagePath",
+        "mediaUrl",
+        "thumbnailUrl",
+        "originalFileName",
+        "contentType",
+        "sizeBytes",
+        "locationText",
+        "altText",
+        "tags",
+        "albumIds",
+        "favoritedBy",
+        "isLingKong",
+        "lingKongLabel",
+        "isSoundtrack",
+        "externalSongUrl",
+        "soundtrackNotes",
+        "status",
+        "trashedAt",
+        "createdBy",
+        "creatorName",
+        "uploadedAt",
+        "updatedAt"
+      ]
+    },
+    "Album": {
+      "title": "Album",
+      "description": "Custom user-defined photo/media album",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Album title"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Album description"
+        },
+        "coverMemoryId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Optional memory ID used as album cover"
+        },
+        "sortOrder": {
+          "type": "number",
+          "description": "Numeric sort order"
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Creator UID"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "coverMemoryId",
+        "sortOrder",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Milestone": {
+      "title": "Milestone",
+      "description": "Manual relationship milestone on the Our Story timeline",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 140,
+          "description": "Milestone title"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1500,
+          "description": "Milestone story description"
+        },
+        "eventDate": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "ISO date YYYY-MM-DD"
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Milestone category (e.g., Anniversary, Firsts, Travel, Special Day)"
+        },
+        "memoryIds": {
+          "type": "array",
+          "description": "Up to 10 linked memory IDs"
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Creator UID"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "eventDate",
+        "category",
+        "memoryIds",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Letter": {
+      "title": "Letter",
+      "description": "Time Capsule letter metadata (non-sensitive envelope visible before unlock)",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 140,
+          "description": "Envelope title"
+        },
+        "recipient": {
+          "type": "string",
+          "enum": ["Kathy", "Austin", "Both of Us", "Our Future Selves"],
+          "maxLength": 40,
+          "description": "Intended recipient"
+        },
+        "occasionNote": {
+          "type": "string",
+          "maxLength": 240,
+          "description": "Short outer envelope note visible while sealed"
+        },
+        "unlockAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore Timestamp when the letter unlocks"
+        },
+        "unlockDateIso": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Display ISO string for scheduled unlock time"
+        },
+        "readBy": {
+          "type": "array",
+          "description": "Member UIDs who have opened/read this letter after unlock"
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Author UID"
+        },
+        "creatorName": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Author display name"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": [
+        "title",
+        "recipient",
+        "occasionNote",
+        "unlockAt",
+        "unlockDateIso",
+        "readBy",
+        "createdBy",
+        "creatorName",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LetterSecret": {
+      "title": "LetterSecret",
+      "description": "Protected Time Capsule letter body enforced by server-authoritative request.time >= unlockAt",
+      "type": "object",
+      "properties": {
+        "body": {
+          "type": "string",
+          "maxLength": 15000,
+          "description": "Confidential letter body text"
+        },
+        "unlockAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-enforced unlock timestamp matching parent Letter"
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Author UID"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": [
+        "body",
+        "unlockAt",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BucketItem": {
+      "title": "BucketItem",
+      "description": "Shared bucket list goal or plan",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 140,
+          "description": "Goal title"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional notes or details"
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Category (Places to Go, Food to Try, Movies to Watch, Things to Learn, Experiences to Share)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["planned", "in-progress", "completed"],
+          "maxLength": 20,
+          "description": "Goal completion status"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["someday", "soon", "dream"],
+          "maxLength": 20,
+          "description": "Gentle priority indicator"
+        },
+        "targetDate": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Optional target date YYYY-MM-DD or empty string"
+        },
+        "linkedMemoryIds": {
+          "type": "array",
+          "description": "Up to 10 linked memory IDs"
+        },
+        "completedAt": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "ISO timestamp when completed or empty string"
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Creator UID"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "category",
+        "status",
+        "priority",
+        "targetDate",
+        "linkedMemoryIds",
+        "completedAt",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserPreferences": {
+      "title": "UserPreferences",
+      "description": "Per-user preferences and favorites isolated per UID",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Owner user UID"
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark", "system"],
+          "maxLength": 20,
+          "description": "UI color theme preference"
+        },
+        "defaultViewMode": {
+          "type": "string",
+          "enum": ["grid", "list"],
+          "maxLength": 20,
+          "description": "Preferred gallery view mode"
+        },
+        "reducedMotion": {
+          "type": "boolean",
+          "description": "Explicit reduced motion toggle"
+        },
+        "favoriteMemoryIds": {
+          "type": "array",
+          "description": "Up to 100 personal favorite memory IDs"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": [
+        "uid",
+        "theme",
+        "defaultViewMode",
+        "reducedMotion",
+        "favoriteMemoryIds",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/couples/{coupleId}": {
+      "schema": { "$ref": "#/entities/Couple" },
+      "description": "Shared couple space configuration for Kathy & Austin"
+    },
+    "/couples/{coupleId}/members/{memberUid}": {
+      "schema": { "$ref": "#/entities/Member" },
+      "description": "Authorized member profiles in the couple space"
+    },
+    "/couples/{coupleId}/memories/{memoryId}": {
+      "schema": { "$ref": "#/entities/Memory" },
+      "description": "Private photos, videos, and audio memories"
+    },
+    "/couples/{coupleId}/albums/{albumId}": {
+      "schema": { "$ref": "#/entities/Album" },
+      "description": "Custom albums organizing memories"
+    },
+    "/couples/{coupleId}/milestones/{milestoneId}": {
+      "schema": { "$ref": "#/entities/Milestone" },
+      "description": "Manual relationship milestones on Our Story timeline"
+    },
+    "/couples/{coupleId}/letters/{letterId}": {
+      "schema": { "$ref": "#/entities/Letter" },
+      "description": "Time Capsule letter envelope metadata"
+    },
+    "/couples/{coupleId}/letters/{letterId}/secrets/{secretId}": {
+      "schema": { "$ref": "#/entities/LetterSecret" },
+      "description": "Time Capsule locked letter body protected by server timestamp rules"
+    },
+    "/couples/{coupleId}/bucketItems/{itemId}": {
+      "schema": { "$ref": "#/entities/BucketItem" },
+      "description": "Shared bucket list plans and goals"
+    },
+    "/users/{userId}/preferences/{prefId}": {
+      "schema": { "$ref": "#/entities/UserPreferences" },
+      "description": "Per-user display preferences and favorites"
+    }
+  }
+}

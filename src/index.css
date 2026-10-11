@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Variation 14: Tactile Scrapbook Editorial — Powdered Blue & Powdered Pink */
+    --bg: #fffdf5;
+    --ink: #322d29;
+    --accent: #ff85a2;
+    --ink-faint: rgba(50, 45, 41, 0.12);
+    --paper-blue: #e8f4ff;
+    --paper-pink: #ffeef2;
+
+    --bg-canvas: #fffdf5;
+    --bg-surface: #ffffff;
+    --bg-subtle: #f7f3e8;
+    --bg-powder-blue: #e8f4ff;
+    --bg-powder-pink: #ffeef2;
+    --border-hairline: #322d29;
+    --border-strong: #322d29;
+    --text-primary: #322d29;
+    --text-secondary: rgba(50, 45, 41, 0.8);
+    --text-muted: rgba(50, 45, 41, 0.6);
+    --accent-blue: #322d29;
+    --accent-blue-hover: #ff85a2;
+    --accent-pink: #ff85a2;
+    --accent-pink-hover: #f06c8b;
+    --ring-focus: #ff85a2;
+    --card-shadow: 10px 10px 0 rgba(50, 45, 41, 0.1);
+  }
+
+  .dark {
+    /* Dark Mode adaptation of Variation 14 Scrapbook */
+    --bg: #161412;
+    --ink: #f7f3eb;
+    --accent: #ff85a2;
+    --ink-faint: rgba(247, 243, 235, 0.12);
+    --paper-blue: #1d2b3a;
+    --paper-pink: #382028;
+
+    --bg-canvas: #161412;
+    --bg-surface: #211e1b;
+    --bg-subtle: #2a2622;
+    --bg-powder-blue: #1d2b3a;
+    --bg-powder-pink: #382028;
+    --border-hairline: #f7f3eb;
+    --border-strong: #f7f3eb;
+    --text-primary: #f7f3eb;
+    --text-secondary: rgba(247, 243, 235, 0.82);
+    --text-muted: rgba(247, 243, 235, 0.6);
+    --accent-blue: #7ab8f5;
+    --accent-blue-hover: #ff85a2;
+    --accent-pink: #ff85a2;
+    --accent-pink-hover: #ffa3b9;
+    --ring-focus: #ff85a2;
+    --card-shadow: 10px 10px 0 rgba(0, 0, 0, 0.45);
+  }
+
+  body {
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    background-image: radial-gradient(var(--ink-faint) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  h1, h2, h3, .font-serif-editorial, .font-gaegu {
+    font-family: 'Gaegu', cursive;
+    letter-spacing: -0.02em;
+  }
+
+  .font-mono-tabular, .font-space-mono {
+    font-family: 'Space Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Scrapbook utility classes matching Variation 14 */
+.scrapbook-card {
+  background-color: var(--bg-surface);
+  border: 3px solid var(--ink);
+  border-radius: 36px;
+  box-shadow: var(--card-shadow);
+}
+
+.scrapbook-card-sm {
+  background-color: var(--bg-surface);
+  border: 2.5px solid var(--ink);
+  border-radius: 28px;
+  box-shadow: 8px 8px 0 var(--ink-faint);
+}
+
+.scrapbook-pill {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background-color: var(--paper-blue);
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1.5px solid var(--ink);
+  color: var(--ink);
+}
+
+.scrapbook-btn-primary {
+  background-color: var(--ink);
+  color: var(--bg-canvas);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 2px solid var(--ink);
+  transition: background-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.scrapbook-btn-primary:hover {
+  background-color: var(--accent);
+  border-color: var(--ink);
+  color: #ffffff;
+}
+
+::selection {
+  background: var(--accent);
+  color: white;
+}
+
+/* Honor prefers-reduced-motion or explicit user reduced-motion setting */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Accessible Focus Ring */
+:focus-visible {
+  outline: 2px solid var(--ring-focus);
+  outline-offset: 2px;
+}

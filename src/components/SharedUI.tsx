@@ -1,0 +1,454 @@
+import React, { useEffect } from 'react';
+import {
+  Camera,
+  Film,
+  Mic,
+  Heart,
+  Sparkles,
+  Music,
+  X,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+} from 'lucide-react';
+import { MemoryItem, ToastMessage } from '../types/models';
+import { formatReadableDate } from '../utils/dateUtils';
+import { formatBytes } from '../utils/mediaUtils';
+
+/**
+ * Toast Notification Region — Variation 14 Scrapbook Style
+ */
+export const ToastRegion: React.FC<{
+  toasts: ToastMessage[];
+  onDismiss: (id: string) => void;
+}> = ({ toasts, onDismiss }) => {
+  if (toasts.length === 0) return null;
+
+  return (
+    <div
+      aria-live="polite"
+      className="fixed bottom-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none px-4 sm:px-0"
+    >
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className="pointer-events-auto flex items-start gap-3 p-4 rounded-3xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] shadow-[6px_6px_0_var(--ink-faint)] transition-all duration-150"
+        >
+          {t.type === 'success' && (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+          )}
+          {t.type === 'error' && (
+            <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+          )}
+          {(t.type === 'info' || t.type === 'warning') && (
+            <Info className="w-4 h-4 text-[var(--accent)] shrink-0 mt-0.5" />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-[var(--ink)]">{t.title}</p>
+            {t.description && (
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5 break-words">
+                {t.description}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => onDismiss(t.id)}
+            aria-label="Dismiss notification"
+            className="text-[var(--text-muted)] hover:text-[var(--ink)] p-1 rounded cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/**
+ * Accessible Confirmation Dialog — Variation 14 Scrapbook Style
+ */
+export const ConfirmDialog: React.FC<{
+  open: boolean;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  isDestructive?: boolean;
+  busy?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({
+  open,
+  title,
+  description,
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  isDestructive = true,
+  busy = false,
+  onConfirm,
+  onCancel,
+}) => {
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !busy) onCancel();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [open, busy, onCancel]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+    >
+      <div className="w-full max-w-md p-8 scrapbook-card space-y-5">
+        <div className="space-y-2">
+          <h2
+            id="confirm-dialog-title"
+            className="text-3xl font-gaegu font-bold text-[var(--ink)] leading-tight"
+          >
+            {title}
+          </h2>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            {description}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onCancel}
+            className="px-5 py-2.5 rounded-2xl text-xs font-semibold border-2 border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--paper-blue)] transition-colors cursor-pointer whitespace-nowrap shrink-0"
+          >
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onConfirm}
+            className={`px-5 py-2.5 rounded-2xl text-xs font-semibold border-2 border-[var(--ink)] text-white transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+              isDestructive
+                ? 'bg-rose-600 hover:bg-rose-700'
+                : 'bg-[var(--ink)] hover:bg-[var(--accent)]'
+            }`}
+          >
+            {busy ? 'Working...' : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Reusable Page Header — Variation 14 Scrapbook Style
+ */
+export const SectionHeader: React.FC<{
+  kicker?: string;
+  title: string;
+  subtitle?: string;
+  actions?: React.ReactNode;
+}> = ({ kicker, title, subtitle, actions }) => {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b-2 border-dashed border-[var(--ink-faint)]">
+      <div className="space-y-2">
+        {kicker && (
+          <div className="scrapbook-pill">
+            <span>★</span>
+            <span>{kicker}</span>
+          </div>
+        )}
+        <h1
+          className="text-4xl md:text-5xl font-gaegu font-bold leading-none text-[var(--ink)]"
+          style={{ textWrap: 'balance' }}
+        >
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="text-sm text-[var(--text-secondary)] max-w-2xl leading-relaxed">
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {actions && (
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {actions}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Reusable Empty State Panel — Variation 14 Scrapbook Style
+ */
+export const EmptyStatePanel: React.FC<{
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  secondaryLabel?: string;
+  onSecondaryAction?: () => void;
+}> = ({
+  title,
+  description,
+  actionLabel,
+  onAction,
+  secondaryLabel,
+  onSecondaryAction,
+}) => {
+  return (
+    <div className="p-8 md:p-12 scrapbook-card text-center max-w-2xl mx-auto my-6 space-y-5 relative">
+      <div className="w-12 h-12 mx-auto rounded-2xl bg-[var(--paper-blue)] border-2 border-[var(--ink)] text-[var(--ink)] flex items-center justify-center">
+        <Sparkles className="w-5 h-5 text-[var(--accent)]" />
+      </div>
+      <h3 className="text-4xl font-gaegu font-bold text-[var(--ink)] leading-none">
+        {title}
+      </h3>
+      <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
+        {description}
+      </p>
+      {(actionLabel || secondaryLabel) && (
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          {actionLabel && onAction && (
+            <button
+              type="button"
+              onClick={onAction}
+              className="scrapbook-btn-primary px-6 py-3 text-xs cursor-pointer whitespace-nowrap shrink-0"
+            >
+              {actionLabel}
+            </button>
+          )}
+          {secondaryLabel && onSecondaryAction && (
+            <button
+              type="button"
+              onClick={onSecondaryAction}
+              className="px-5 py-3 rounded-2xl text-xs font-semibold border-2 border-[var(--ink)] bg-[var(--paper-pink)] text-[var(--ink)] hover:bg-[var(--accent)] hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              {secondaryLabel}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Media Card Component — Variation 14 Tactile Scrapbook Frame
+ */
+export const MemoryCard: React.FC<{
+  memory: MemoryItem;
+  currentUserId: string;
+  viewMode?: 'grid' | 'list';
+  onOpen: (memory: MemoryItem) => void;
+  onToggleFavorite: (memory: MemoryItem) => void;
+}> = ({
+  memory,
+  currentUserId,
+  viewMode = 'grid',
+  onOpen,
+  onToggleFavorite,
+}) => {
+  const isFav = memory.favoritedBy.includes(currentUserId);
+  const displayUrl = memory.thumbnailUrl || memory.mediaUrl;
+
+  const mediaIcon =
+    memory.mediaType === 'photo' ? (
+      <Camera className="w-3.5 h-3.5 text-[var(--ink)] shrink-0" />
+    ) : memory.mediaType === 'video' ? (
+      <Film className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
+    ) : (
+      <Mic className="w-3.5 h-3.5 text-[var(--ink)] shrink-0" />
+    );
+
+  const mediaLabel =
+    memory.mediaType === 'photo'
+      ? 'Photo'
+      : memory.mediaType === 'video'
+        ? 'Video'
+        : memory.externalSongUrl
+          ? 'Song Link'
+          : 'Audio Note';
+
+  if (viewMode === 'list') {
+    return (
+      <div className="group flex items-center justify-between gap-4 p-4 rounded-3xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] shadow-[6px_6px_0_var(--ink-faint)] transition-transform duration-150 hover:-translate-y-0.5">
+        <button
+          type="button"
+          onClick={() => onOpen(memory)}
+          className="flex items-center gap-4 flex-1 min-w-0 text-left cursor-pointer"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-[var(--paper-blue)] overflow-hidden shrink-0 flex items-center justify-center border-2 border-[var(--ink)]">
+            {memory.mediaType === 'photo' && displayUrl ? (
+              <img
+                src={displayUrl}
+                alt={memory.altText || memory.title || 'Memory photo'}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+              />
+            ) : memory.mediaType === 'video' ? (
+              <Film className="w-6 h-6 text-[var(--accent)]" />
+            ) : (
+              <Music className="w-6 h-6 text-[var(--ink)]" />
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-xl font-gaegu font-bold text-[var(--ink)] truncate leading-none">
+              {memory.title || memory.originalFileName || 'Untitled Memory'}
+            </p>
+            {memory.caption && (
+              <p className="text-xs text-[var(--text-secondary)] line-clamp-1">
+                {memory.caption}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-space-mono text-[var(--text-muted)]">
+              <span className="inline-flex items-center gap-1">
+                {mediaIcon}
+                <span>{mediaLabel}</span>
+              </span>
+              <span aria-hidden="true">·</span>
+              <span>{formatReadableDate(memory.memoryDate)}</span>
+              {memory.creatorName && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span>By {memory.creatorName}</span>
+                </>
+              )}
+              {memory.sizeBytes > 0 && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span>{formatBytes(memory.sizeBytes)}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(memory);
+          }}
+          aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+          className="p-2.5 rounded-2xl border-2 border-[var(--ink)] bg-[var(--paper-pink)] text-[var(--ink)] hover:bg-[var(--accent)] hover:text-white transition-transform duration-150 active:scale-95 cursor-pointer shrink-0"
+        >
+          <Heart
+            className={`w-4 h-4 ${
+              isFav ? 'fill-[var(--accent)] text-[var(--accent)]' : ''
+            }`}
+          />
+        </button>
+      </div>
+    );
+  }
+
+  // Grid Card View — Scrapbook Polaroid Card
+  return (
+    <article className="group flex flex-col scrapbook-card-sm overflow-hidden transition-transform duration-150 hover:-translate-y-1">
+      <div className="relative w-full aspect-[4/3] bg-[var(--paper-blue)] border-b-2 border-[var(--ink)] overflow-hidden flex items-center justify-center">
+        <button
+          type="button"
+          onClick={() => onOpen(memory)}
+          className="w-full h-full flex items-center justify-center cursor-pointer text-left focus:outline-none"
+          aria-label={`Open memory: ${memory.title || 'Untitled'}`}
+        >
+          {memory.mediaType === 'photo' && displayUrl ? (
+            <img
+              src={displayUrl}
+              alt={memory.altText || memory.title || 'Memory photo'}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-contain bg-[var(--bg-subtle)] transition-transform duration-200 group-hover:scale-[1.02]"
+            />
+          ) : memory.mediaType === 'video' ? (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-6 bg-[var(--paper-pink)] text-center">
+              <Film className="w-8 h-8 text-[var(--accent)]" />
+              <span className="text-xs font-space-mono uppercase tracking-wider text-[var(--ink)]">
+                Video Memory · Play
+              </span>
+            </div>
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-6 bg-[var(--paper-blue)] text-center">
+              <Mic className="w-8 h-8 text-[var(--ink)]" />
+              <span className="text-xs font-space-mono uppercase tracking-wider text-[var(--ink)]">
+                {memory.externalSongUrl
+                  ? 'Soundtrack Song · Open'
+                  : 'Audio Note · Listen'}
+              </span>
+            </div>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(memory);
+          }}
+          aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+          className="absolute top-3 right-3 p-2 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--paper-pink)] transition-transform duration-150 active:scale-95 cursor-pointer"
+        >
+          <Heart
+            className={`w-4 h-4 ${
+              isFav ? 'fill-[var(--accent)] text-[var(--accent)]' : ''
+            }`}
+          />
+        </button>
+      </div>
+
+      <div className="p-5 flex-1 flex flex-col justify-between space-y-2.5">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-space-mono uppercase tracking-wider text-[var(--text-muted)]">
+            <span className="inline-flex items-center gap-1">
+              {mediaIcon}
+              <span>{mediaLabel}</span>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>{formatReadableDate(memory.memoryDate)}</span>
+            {memory.isLingKong && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="text-[var(--accent)] font-bold">
+                  Ling &amp; Kong
+                </span>
+              </>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onOpen(memory)}
+            className="block text-left w-full cursor-pointer"
+          >
+            <h3 className="text-2xl font-gaegu font-bold text-[var(--ink)] line-clamp-1 leading-tight group-hover:text-[var(--accent)] transition-colors">
+              {memory.title || memory.originalFileName || 'Untitled Memory'}
+            </h3>
+          </button>
+
+          {memory.caption && (
+            <p className="text-xs text-[var(--text-secondary)] line-clamp-2 leading-relaxed">
+              {memory.caption}
+            </p>
+          )}
+        </div>
+
+        {memory.tags.length > 0 && (
+          <p className="text-[11px] font-space-mono text-[var(--text-muted)] truncate pt-2 border-t border-dashed border-[var(--ink-faint)]">
+            {memory.tags.join(' · ')}
+          </p>
+        )}
+      </div>
+    </article>
+  );
+};
