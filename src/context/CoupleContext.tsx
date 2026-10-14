@@ -436,6 +436,17 @@ export const CoupleProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const valid = await reconcileMemoriesWithSupabase(memories);
       setMemories(valid);
+      await syncOrphanedSupabaseMemories(valid, (recovered) => {
+        if (recovered.length > 0) {
+          setMemories((prev) => {
+            const map = new Map(prev.map((m) => [m.id, m]));
+            for (const r of recovered) map.set(r.id, r);
+            return Array.from(map.values()).sort((a, b) =>
+              b.memoryDate.localeCompare(a.memoryDate)
+            );
+          });
+        }
+      });
       addToast('Storage reconciled with Supabase', 'success');
     } catch (err: unknown) {
       const msg =

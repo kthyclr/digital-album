@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { MemoryItem, ToastMessage } from '../types/models';
 import { formatReadableDate } from '../utils/dateUtils';
-import { formatBytes } from '../utils/mediaUtils';
+import { formatBytes, detectActualMediaType } from '../utils/mediaUtils';
 
 /**
  * Toast Notification Region — Variation 14 Scrapbook Style
@@ -275,6 +275,7 @@ export const MemoryCard: React.FC<{
   );
   const isTrashed = memory.status === 'trashed';
   const displayUrl = memory.thumbnailUrl || memory.mediaUrl;
+  const actualMediaType = detectActualMediaType(memory);
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
@@ -282,18 +283,18 @@ export const MemoryCard: React.FC<{
   }, [displayUrl]);
 
   const mediaIcon =
-    memory.mediaType === 'photo' ? (
+    actualMediaType === 'photo' ? (
       <Camera className="w-3.5 h-3.5 text-[var(--ink)] shrink-0" />
-    ) : memory.mediaType === 'video' ? (
+    ) : actualMediaType === 'video' ? (
       <Film className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
     ) : (
       <Mic className="w-3.5 h-3.5 text-[var(--ink)] shrink-0" />
     );
 
   const mediaLabel =
-    memory.mediaType === 'photo'
+    actualMediaType === 'photo'
       ? 'Photo'
-      : memory.mediaType === 'video'
+      : actualMediaType === 'video'
         ? 'Video'
         : memory.externalSongUrl
           ? 'Song Link'
@@ -308,7 +309,7 @@ export const MemoryCard: React.FC<{
           className="flex items-center gap-3.5 flex-1 min-w-0 text-left cursor-pointer"
         >
           <div className="p-1.5 rounded-xl bg-[var(--paper-blue)] shrink-0 flex items-center justify-center border-2 border-[var(--ink)]">
-            {memory.mediaType === 'photo' && displayUrl && !imgError ? (
+            {actualMediaType === 'photo' && displayUrl && !imgError ? (
               <img
                 src={displayUrl}
                 alt={memory.altText || memory.title || 'Memory photo'}
@@ -317,17 +318,17 @@ export const MemoryCard: React.FC<{
                 onError={() => setImgError(true)}
                 className="block w-auto h-auto max-w-[64px] max-h-[64px] rounded-lg object-contain"
               />
-            ) : memory.mediaType === 'photo' ? (
-              <div className="w-12 h-12 flex items-center justify-center">
-                <Camera className="w-6 h-6 text-[var(--text-muted)]" />
-              </div>
-            ) : memory.mediaType === 'video' ? (
+            ) : actualMediaType === 'video' ? (
               <div className="w-12 h-12 flex items-center justify-center">
                 <Film className="w-6 h-6 text-[var(--accent)]" />
               </div>
-            ) : (
+            ) : actualMediaType === 'audio' ? (
               <div className="w-12 h-12 flex items-center justify-center">
                 <Music className="w-6 h-6 text-[var(--ink)]" />
+              </div>
+            ) : (
+              <div className="w-12 h-12 flex items-center justify-center">
+                <Camera className="w-6 h-6 text-[var(--text-muted)]" />
               </div>
             )}
           </div>
@@ -469,7 +470,7 @@ export const MemoryCard: React.FC<{
             className="flex items-center justify-center cursor-pointer text-left focus:outline-none max-w-full"
             aria-label={`Open memory: ${memory.title || 'Untitled'}`}
           >
-            {memory.mediaType === 'photo' && displayUrl && !imgError ? (
+            {actualMediaType === 'photo' && displayUrl && !imgError ? (
               <img
                 src={displayUrl}
                 alt={memory.altText || memory.title || 'Memory photo'}
@@ -478,16 +479,11 @@ export const MemoryCard: React.FC<{
                 onError={() => setImgError(true)}
                 className="block w-auto h-auto max-w-full max-h-[320px] sm:max-h-[340px] rounded-xl object-contain transition-transform duration-200 group-hover:scale-[1.01]"
               />
-            ) : memory.mediaType === 'photo' ? (
-              <div className="w-44 h-36 flex flex-col items-center justify-center p-3 text-center text-xs text-[var(--text-muted)] space-y-1">
-                <Camera className="w-8 h-8 opacity-40" />
-                <span className="font-space-mono text-[10px]">Photo file removed from storage</span>
-              </div>
-            ) : memory.mediaType === 'video' ? (
-              memory.mediaUrl ? (
+            ) : actualMediaType === 'video' ? (
+              displayUrl ? (
                 <div className="relative inline-flex items-center justify-center max-w-full">
                   <video
-                    src={memory.mediaUrl}
+                    src={displayUrl}
                     preload="metadata"
                     muted
                     playsInline
@@ -508,7 +504,7 @@ export const MemoryCard: React.FC<{
                   </span>
                 </div>
               )
-            ) : (
+            ) : actualMediaType === 'audio' ? (
               <div className="w-56 py-8 px-6 flex flex-col items-center justify-center gap-2 rounded-xl bg-[var(--bg-surface)] border border-dashed border-[var(--ink)] text-center">
                 <Mic className="w-7 h-7 text-[var(--ink)]" />
                 <span className="text-xs font-space-mono uppercase tracking-wider text-[var(--ink)]">
@@ -516,6 +512,11 @@ export const MemoryCard: React.FC<{
                     ? 'Soundtrack Song · Open'
                     : 'Audio Note · Listen'}
                 </span>
+              </div>
+            ) : (
+              <div className="w-44 h-36 flex flex-col items-center justify-center p-3 text-center text-xs text-[var(--text-muted)] space-y-1">
+                <Camera className="w-8 h-8 opacity-40" />
+                <span className="font-space-mono text-[10px]">Preview unavailable</span>
               </div>
             )}
           </button>

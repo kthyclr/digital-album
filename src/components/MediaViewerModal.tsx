@@ -12,6 +12,7 @@ import {
   ExternalLink,
   RotateCcw,
   Camera,
+  RefreshCw,
 } from 'lucide-react';
 import { MemoryItem } from '../types/models';
 import { useCouple } from '../context/CoupleContext';
@@ -21,9 +22,10 @@ import {
   setMemoryTrashState,
   permanentlyDeleteMemory,
   updateCoupleConfiguration,
+  isMemoryInSupabaseStorage,
 } from '../services/coupleDataService';
 import { formatReadableDate } from '../utils/dateUtils';
-import { formatBytes } from '../utils/mediaUtils';
+import { formatBytes, detectActualMediaType } from '../utils/mediaUtils';
 import {
   DEFAULT_SUGGESTED_TAGS,
   DEFAULT_LING_KONG_LABELS,
@@ -44,6 +46,7 @@ export const MediaViewerModal: React.FC<{
     patchLocalMemory,
     removeLocalMemory,
     patchLocalCoupleConfig,
+    pruneMemory,
   } = useCouple();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -114,6 +117,24 @@ export const MediaViewerModal: React.FC<{
   const isFav = memory.favoritedBy.includes(user.uid);
   const isFeatured = coupleConfig.featuredMemoryId === memory.id;
   const displayMediaUrl = memory.mediaUrl || memory.thumbnailUrl;
+  const actualMediaType = detectActualMediaType(memory);
+
+  const handleImageError = async () => {
+    // Check if the photo was actually removed from Supabase Storage
+    const stillExists = await isMemoryInSupabaseStorage(memory.id);
+    if (!stillExists) {
+      addToast(
+        'This photo was deleted from Supabase Storage and has been automatically removed from your album.',
+        'info'
+      );
+      if (pruneMemory) {
+        await pruneMemory(memory.id);
+      }
+      onClose();
+    } else {
+      setImgError(true);
+    }
+  };
 
   const handleToggleFav = async () => {
     const nextFavs = isFav
@@ -327,14 +348,14 @@ export const MediaViewerModal: React.FC<{
           </div>
 
           {/* Media Rendering: Frame matches the picture/video dimensions with clean padding */}
-          {memory.mediaType === 'photo' ? (
+          {actualMediaType === 'photo' ? (
             displayMediaUrl && !imgError ? (
               <div className="inline-flex items-center justify-center p-2 sm:p-3 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink-faint)] max-w-full overflow-auto">
                 <img
                   src={displayMediaUrl}
                   alt={memory.altText || memory.title || 'Memory photograph'}
                   referrerPolicy="no-referrer"
-                  onError={() => setImgError(true)}
+                  onError={handleImageError}
                   className={`block rounded-xl transition-transform duration-200 ${
                     zoomed
                       ? 'scale-150 cursor-zoom-out'
@@ -344,30 +365,40 @@ export const MediaViewerModal: React.FC<{
                 />
               </div>
             ) : (
-              <div className="p-8 rounded-2xl bg-[var(--bg-surface)] border-2 border-dashed border-[var(--ink-faint)] text-center space-y-2">
+              <div className="p-8 rounded-2xl bg-[var(--bg-surface)] border-2 border-dashed border-[var(--ink-faint)] text-center space-y-3">
                 <Camera className="w-10 h-10 mx-auto text-[var(--text-muted)]" />
                 <p className="text-sm font-semibold text-[var(--ink)]">
-                  Photo file is no longer in Supabase storage
+                  Unable to display photograph
                 </p>
                 <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto">
-                  The original image file was removed from storage.
+                  The image file could not be rendered right now. You can retry loading or open the direct link.
                 </p>
-                <div className="pt-2">
+                <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
                   <button
                     type="button"
-                    onClick={async () => {
-                      await permanentlyDeleteMemory(memory);
-                      onClose();
+                    onClick={() => {
+                      setImgError(false);
                     }}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium border border-rose-600 bg-rose-600 text-white hover:bg-rose-700 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium border border-[var(--ink)] bg-[var(--paper-pink)] text-[var(--ink)] hover:bg-[var(--accent)] hover:text-white cursor-pointer"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Delete Orphaned Record from Firebase
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Retry Loading
                   </button>
+                  {displayMediaUrl && (
+                    <a
+                      href={displayMediaUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium border border-[var(--ink)] bg-[var(--bg-surface)] text-[var(--ink)] hover:bg-[var(--paper-blue)] cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Open Direct Link
+                    </a>
+                  )}
                 </div>
               </div>
             )
-          ) : memory.mediaType === 'video' ? (
+          ) : actualMediaType === 'video' ? (
             displayMediaUrl ? (
               <div className="inline-flex items-center justify-center p-2 sm:p-3 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink-faint)] max-w-full">
                 <video

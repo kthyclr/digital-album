@@ -20,6 +20,7 @@ import {
   validateMediaFile,
   detectFileCaptureDate,
   formatBytes,
+  ensureWebCompatibleImage,
 } from '../utils/mediaUtils';
 import { uploadAndCreateMemory } from '../services/coupleDataService';
 import { DateSource, MediaType } from '../types/models';
