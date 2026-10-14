@@ -432,9 +432,17 @@ export async function isMemoryInSupabaseStorage(memoryId: string): Promise<boole
     const { data, error } = await supabase.storage
       .from(supabaseBucket)
       .list(baseFolder, { limit: 2 });
-    if (error) return true;
-    return Boolean(data && data.some((f) => f.name && !f.name.startsWith('.')));
-  } catch {
+    if (error) {
+      console.warn(`Supabase list error for ${memoryId}:`, error);
+      return true;
+    }
+    const hasFiles = Boolean(data && data.some((f) => f.name && !f.name.startsWith('.')));
+    if (!hasFiles) {
+      console.log(`Supabase folder empty or not found for ${memoryId}:`, baseFolder);
+    }
+    return hasFiles;
+  } catch (err) {
+    console.error(`Supabase list catch error for ${memoryId}:`, err);
     return true;
   }
 }
@@ -589,9 +597,12 @@ export async function reconcileMemoriesWithSupabase(
       // Exclude from display AND delete from Firebase Firestore so it is no longer stored there or fetched!
       prunedIds.push(rawMem.id);
       const memRef = doc(db, 'couples', COUPLE_SPACE_ID, 'memories', rawMem.id);
-      deleteDoc(memRef).catch((e) =>
-        console.warn(`Could not prune orphaned memory ${rawMem.id} from Firestore:`, e)
-      );
+      console.log('Attempting to prune orphaned memory:', rawMem.id);
+      deleteDoc(memRef)
+        .then(() => console.log('Successfully pruned memory:', rawMem.id))
+        .catch((e) =>
+          console.error(`FAILED to prune orphaned memory ${rawMem.id} from Firestore:`, e)
+        );
     }
   }
 

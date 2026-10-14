@@ -9,6 +9,7 @@ import {
   Save,
   Cake,
   RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 import { useCouple } from '../context/CoupleContext';
 import { SectionHeader } from '../components/SharedUI';
@@ -568,7 +569,17 @@ export const SettingsSection: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-2 flex justify-end">
+          <div className="pt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                await syncSupabaseStorage();
+              }}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-medium bg-[var(--paper-pink)] text-[var(--ink)] hover:bg-[var(--accent)] hover:text-white cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Sync Media Storage
+            </button>
             <button
               type="submit"
               disabled={savingConfig}
